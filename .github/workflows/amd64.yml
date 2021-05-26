@@ -26,10 +26,10 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           prerelease: false
-          artifacts: "${{ env.GITHUB_WORKSPACE }}/bin/iperf3"
+          artifacts: ~/bin/iperf3
           replacesArtifacts: true
           tag: "${{ env.iperf_tag }}"
           name: "${{ env.iperf_release_name }}"
-          bodyFile: " ${{ env.GITHUB_WORKSPACE }}/bin/iperf3"
+          bodyFile: ~/bin/iperf3
           allowUpdates: true
           token: ${{ secrets.GITHUB_TOKEN }}
