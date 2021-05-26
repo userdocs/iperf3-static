@@ -22,14 +22,15 @@ jobs:
           make install
       - run: echo 'iperf_release_name='$(strings ~/bin/iperf3 | grep -E '^iperf 3\.[0-9]{1,3}$') >> $GITHUB_ENV
       - run: echo 'iperf_tag='$(strings ~/bin/iperf3 | grep -E '^iperf 3\.[0-9]{1,3}$' | awk '{print $2}') >> $GITHUB_ENV
+      - run: echo 'iperf_path='~/bin/iperf3 >> $GITHUB_ENV
       - name: "Create release"
         uses: ncipollo/release-action@v1
         with:
           prerelease: false
-          artifacts: ~/bin/iperf3
+          artifacts: "${{ env.iperf_path }}"
           replacesArtifacts: true
           tag: "${{ env.iperf_tag }}"
           name: "${{ env.iperf_release_name }}"
-          bodyFile: ~/bin/iperf3
+          bodyFile: "${{ env.iperf_path }}"
           allowUpdates: true
           token: ${{ secrets.GITHUB_TOKEN }}
