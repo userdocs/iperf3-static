@@ -1,29 +1,45 @@
 
-Built on Alpine linux 3.11 amd64
+Built on Alpine linux 3.13 amd64
 
 ### Dependencies
 
 Alpine linux
 
 ~~~
-apk add build-base pkgconf autoconf automake libtool git perl linux-headers
+apk add build-base pkgconf autoconf automake libtool git perl openssl-dev linux-headers
 ~~~
 
 Debian linux
 
 ~~~
-apt install -y build-essential pkg-config automake libtool git perl
+apt install -y build-essential pkg-config automake libtool libssl-dev git perl
 ~~~
 
 ### Build Instructions
 
-~~~
-git clone https://github.com/esnet/iperf.git ~/iperf3
-cd ~/iperf3
+```bash
+git clone https://github.com/esnet/iperf.git ~/iperf3 && cd ~/iperf3
+```
+
+Cygiwn
+
+```bash
+./bootstrap.sh
+./configure --prefix=$HOME
+```
+
+linux
+
+```bash
 ./configure --disable-shared --enable-static-bin --prefix=$HOME
+```
+
+Build
+
+```
 make -j$(nproc)
 make install
-~~~
+```
 
 ### Check the linking was done properly.
 
