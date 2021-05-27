@@ -1,0 +1,76 @@
+name: iperf3 multiarch
+on:
+  workflow_dispatch:
+jobs:
+  build:
+    name: iperf3 multiarch
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    container: alpine:latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: x86_64_iperf3
+            alpine_arch: x86_64
+            CHOST: ${{ null }}
+            CC: gcc
+            AR: ar
+            CXX: g++
+
+          - name: aarch64_iperf3
+            alpine_arch: aarch64
+            CHOST: aarch64-linux-musl
+            CC: aarch64-linux-musl-gcc
+            AR: aarch64-linux-musl-ar
+            CXX: aarch64-linux-musl-g++
+    env:
+      CDN: http://dl-cdn.alpinelinux.org/alpine/edge/main/
+    steps:
+      - uses: actions/checkout@v2.3.4
+      - name: Install build depenencies
+        run: apk add build-base pkgconf autoconf automake curl libtool git perl linux-headers
+        shell: ash {0}
+      - name: bootstrap cross build files
+        run: |
+          curl -sL https://musl.cc/aarch64-linux-musl-cross.tgz -o $HOME/cross.tgz
+          tar xf $HOME/cross.tgz --strip-components=1 -C $HOME/
+      - name: build iperf3
+        run: |
+          export PATH=$HOME/bin:$PATH
+          export CHOST=${{ matrix.CHOST }}
+          export CC=${{ matrix.CC }}
+          export AR=${{ matrix.AR }}
+          export CXX=${{ matrix.CXX }}
+          #
+          curl -sL "${{ env.CDN }}${{ matrix.alpine_arch }}/$(apk info openssl-dev | awk '{print $1}' | head -n 1).apk" -o "$HOME/openssl-dev_${{ matrix.alpine_arch }}.apk"
+          curl -sL "${{ env.CDN }}${{ matrix.alpine_arch }}/$(apk info openssl-libs-static | awk '{print $1}' | head -n 1).apk" -o "$HOME/openssl-libs-static_${{ matrix.alpine_arch }}.apk"
+          #
+          tar xf "$HOME/openssl-dev_${{ matrix.alpine_arch }}.apk" --strip-components=1 -C "$HOME"
+          tar xf "$HOME/openssl-libs-static_${{ matrix.alpine_arch }}.apk" --strip-components=1 -C "$HOME"
+          #
+          git clone https://github.com/esnet/iperf.git $HOME/iperf3
+          cd $HOME/iperf3
+          ./configure --host=${{ matrix.CHOST }} --disable-shared --with-openssl=$HOME --enable-static-bin --prefix=$HOME
+          make
+          make install
+      - name: Rename iperf3 to ${{ matrix.name }}
+        run: mv $HOME/bin/iperf3 $HOME/bin/${{ matrix.name }}
+      - name: Create path to binary env
+        run: echo 'iperf_path='$(echo $HOME/bin/${{ matrix.name }}) >> $GITHUB_ENV
+      - name: Create release name env
+        run: echo 'iperf_release_name='$(strings ${{ env.iperf_path }} | grep -E '^iperf 3\.[0-9]{1,3}$') >> $GITHUB_ENV
+      - name: Create tag env
+        run: echo 'iperf_tag='$(strings ${{ env.iperf_path }} | grep -E '^iperf 3\.[0-9]{1,3}$' | awk '{print $2}') >> $GITHUB_ENV
+      - name: "Create release"
+        uses: ncipollo/release-action@v1
+        with:
+          prerelease: false
+          artifacts: "${{ env.iperf_path }}"
+          replacesArtifacts: true
+          tag: "${{ env.iperf_tag }}"
+          name: "${{ env.iperf_release_name }}"
+          allowUpdates: true
+          token: ${{ secrets.GITHUB_TOKEN }}
