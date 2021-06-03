@@ -54,7 +54,7 @@ jobs:
         run: docker exec multiarch git clone https://github.com/esnet/iperf.git /root/iperf3
 
       - name: Configure
-        run: docker exec multiarch bash -c 'cd /root/iperf3 && ./configure --host=${{ matrix.CHOST }} --disable-shared --with-openssl --enable-static-bin --prefix=/root'
+        run: docker exec multiarch bash -c 'cd /root/iperf3 && ./configure --disable-shared --with-openssl=/usr --enable-static-bin --prefix=/root'
 
       - name: Build
         run: docker exec multiarch bash -c 'cd /root/iperf3 && make && make install'
