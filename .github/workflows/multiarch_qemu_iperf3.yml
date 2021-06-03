@@ -51,20 +51,20 @@ jobs:
         run: docker exec multiarch apk add build-base pkgconf autoconf automake curl libtool git tar curl perl linux-headers
 
       - name: clone esnet/iperf
-        run: git clone https://github.com/esnet/iperf.git $HOME/iperf3
+        run: docker exec multiarch git clone https://github.com/esnet/iperf.git /root/iperf3
 
       - name: Configure and build
         run: |
-          cd $HOME/iperf3
-          ./configure --host=${{ matrix.CHOST }} --disable-shared --with-openssl=$HOME --enable-static-bin --prefix=$HOME
-          make
+          docker exec multiarch cd /root/iperf3 && \
+          ./configure --host=${{ matrix.CHOST }} --disable-shared --with-openssl=/root --enable-static-bin --prefix=/root && \
+          make && \
           make install
 
       - name: Rename iperf3 to ${{ matrix.arch }}
-        run: mv -f $HOME/bin/iperf3 $HOME/bin/${{ matrix.arch }}
+        run: mv -f ${{ github.workspace }}/bin/iperf3 ${{ github.workspace }}/bin/${{ matrix.arch }}
 
       - name: Create path to binary env
-        run: echo 'iperf_path='$(echo $HOME/bin/${{ matrix.arch }}) >> $GITHUB_ENV
+        run: echo 'iperf_path='$(echo ${{ github.workspace }}/bin/${{ matrix.arch }}) >> $GITHUB_ENV
 
       - name: Create release name env
         run: echo 'iperf_release_name='$(strings ${{ env.iperf_path }} | grep -E '^iperf 3\.[0-9]{1,3}$') >> $GITHUB_ENV
