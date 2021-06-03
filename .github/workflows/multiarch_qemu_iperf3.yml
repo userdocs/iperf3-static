@@ -7,9 +7,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        name: iperf3
-        os_id: alpine
-        os_version_id: edge
+        name: [iperf3]
+        os_id: [alpine]
+        os_version_id: [edge]
         arch: [i386, amd64, arm32v6, arm32v7, arm64v8, ppc64le, s390x]
         include:
           - arch: i386
