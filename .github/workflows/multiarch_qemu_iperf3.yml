@@ -60,7 +60,7 @@ jobs:
         run: docker exec multiarch bash -c 'cd /root/iperf3 && make && make install'
 
       - name: Rename iperf3 to ${{ matrix.arch }}
-        run: mv -f ${{ github.workspace }}/bin/iperf3 ${{ github.workspace }}/bin/${{ matrix.arch }}
+        run: docker exec multiarch mv -f /root/bin/iperf3 /root/bin/iperf3-${{ matrix.arch }}
 
       - name: Create path to binary env
         run: echo 'iperf_path='$(echo ${{ github.workspace }}/bin/${{ matrix.arch }}) >> $GITHUB_ENV
