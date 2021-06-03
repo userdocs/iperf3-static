@@ -66,7 +66,7 @@ jobs:
         run: echo 'iperf_path='$(echo ${{ github.workspace }}/bin/iperf3-${{ matrix.arch }}) >> $GITHUB_ENV
 
       - name: Create release name env
-        run: echo 'iperf_release_name='$(strings ${{ env.iperf_path }} | grep -E '^iperf 3\.[0-9]{1,3}$') >> $GITHUB_ENV
+        run: echo 'iperf_release_name='$(strings ${{ env.iperf_path }} ^iperf 3\.[0-9]{1,3}(\.[0-9]{1,2})?$') >> $GITHUB_ENV
 
       - name: Create tag env
         run: echo 'iperf_tag='$(strings ${{ env.iperf_path }} | grep -E '^iperf 3\.[0-9]{1,3}$' | awk '{print $2}') >> $GITHUB_ENV
