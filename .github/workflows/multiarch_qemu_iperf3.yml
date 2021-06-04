@@ -31,6 +31,9 @@ jobs:
 
     env:
       CDN: http://dl-cdn.alpinelinux.org/alpine/edge/main/
+      CXXFLAGS: "--static -static -std=c++17"
+      CPPFLAGS: "--static -static"
+      LDFLAGS: "--static -static"
 
     steps:
       - uses: actions/checkout@v2.3.4
@@ -39,7 +42,7 @@ jobs:
         run: docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
 
       - name: Create docker multiarch ${{ matrix.docker_arch }} container
-        run: docker run --name multiarch -it -d -w /root --platform ${{ matrix.docker_arch }} -v ${{ github.workspace }}:/root ${{ matrix.arch }}/${{ matrix.os_id }}:${{ matrix.os_version_id }}
+        run: docker run --name multiarch -it -d -w /root -e CXXFLAGS="${{ env.CXXFLAGS }}" -e CPPFLAGS="${{ env.CPPFLAGS }}" -e LDFLAGS="${{ env.LDFLAGS }}" --platform ${{ matrix.docker_arch }} -v ${{ github.workspace }}:/root ${{ matrix.arch }}/${{ matrix.os_id }}:${{ matrix.os_version_id }}
 
       - name: Run apk update
         run: docker exec multiarch apk update --repository=${{ env.CDN }}
