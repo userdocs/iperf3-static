@@ -57,10 +57,10 @@ jobs:
         run: docker exec multiarch git clone https://github.com/esnet/iperf.git /root/${{ matrix.name }}
 
       - name: Configure ${{ matrix.name }}
-        run: docker exec multiarch bash -c 'cd /root/${{ matrix.name }} && ./configure --disable-shared --with-openssl=/usr --enable-static-bin --prefix=/root'
+        run: docker exec -w /root/${{ matrix.name }} multiarch ./configure --disable-shared --with-openssl=/usr --enable-static-bin --prefix=/root
 
       - name: Build ${{ matrix.name }}
-        run: docker exec multiarch bash -c 'cd /root/${{ matrix.name }} && make -j$(nproc) && make install'
+        run: docker exec -w /root/${{ matrix.name }} multiarch make -j$(nproc) && make install
 
       - name: Rename ${{ matrix.name }} to ${{ matrix.name }}-${{ matrix.arch }}
         run: docker exec multiarch mv -f /root/bin/${{ matrix.name }} /root/bin/${{ matrix.name }}-${{ matrix.arch }}
