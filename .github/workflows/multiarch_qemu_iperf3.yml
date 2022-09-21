@@ -53,7 +53,7 @@ jobs:
         run: docker exec multiarch apk upgrade --repository=${{ env.CDN }}
 
       - name: Run apk to install the core build dependencies
-        run: docker exec multiarch apk add bash build-base pkgconf autoconf automake curl libtool git tar curl perl openssl-dev openssl-libs-static linux-headers
+        run: docker exec multiarch apk add build-base pkgconf autoconf automake curl libtool git tar curl perl openssl-dev openssl-libs-static linux-headers
 
       - name: Git clone ${{ matrix.name }}
         run: docker exec multiarch git clone https://github.com/esnet/iperf.git /root/${{ matrix.name }}
@@ -61,7 +61,7 @@ jobs:
       - name: patch cjson ${{ matrix.name }}
         run: |
           docker exec -w /root/${{ matrix.name }} multiarch curl -sL "https://patch-diff.githubusercontent.com/raw/esnet/iperf/pull/1391.patch" -o 1391.patch
-          docker exec -w /root/${{ matrix.name }} multiarch bash -c 'patch -p1 < 1391.patch'
+          docker exec -w /root/${{ matrix.name }} multiarch ash -c 'patch -p1 < 1391.patch'
 
       - name: Configure ${{ matrix.name }}
         run: docker exec -w /root/${{ matrix.name }} multiarch ./configure --disable-shared --with-openssl=/usr --enable-static-bin --prefix=/root
