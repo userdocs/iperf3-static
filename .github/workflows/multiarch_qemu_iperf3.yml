@@ -60,7 +60,7 @@ jobs:
 
       - name: patch cjson ${{ matrix.name }}
         run: |
-          docker exec -w /root/${{ matrix.name }} multiarch curl -sLO "https://patch-diff.githubusercontent.com/raw/esnet/iperf/pull/1391.patch"
+          docker exec -w /root/${{ matrix.name }} multiarch curl -sL "https://patch-diff.githubusercontent.com/raw/esnet/iperf/pull/1391.patch" -o 1391.patch
           docker exec -w /root/${{ matrix.name }} multiarch patch -p1 < 1391.patch
 
       - name: Configure ${{ matrix.name }}
