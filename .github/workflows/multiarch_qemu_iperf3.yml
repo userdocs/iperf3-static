@@ -53,7 +53,7 @@ jobs:
         run: docker exec multiarch apk upgrade --repository=${{ env.CDN }}
 
       - name: Run apk to install the core build dependencies
-        run: docker exec multiarch apk add build-base pkgconf autoconf automake curl libtool git tar curl perl openssl-dev openssl-libs-static linux-headers
+        run: docker exec multiarch apk add bash build-base pkgconf autoconf automake curl libtool git tar curl perl openssl-dev openssl-libs-static linux-headers
 
       - name: Git clone ${{ matrix.name }}
         run: docker exec multiarch git clone https://github.com/esnet/iperf.git /root/${{ matrix.name }}
