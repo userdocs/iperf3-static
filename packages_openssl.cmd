@@ -1,0 +1,1 @@
+automake,gcc-core,gcc-g++,git,libtool,make,pkg-config,libssl-devel,zlib-devel

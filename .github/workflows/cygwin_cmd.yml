@@ -1,0 +1,60 @@
+name: Build iperf3 x64 static via cygwin-cmd
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        name: [iperf3]
+        build: [basic, openssl]
+        include:
+          - build: "basic"
+            filename: ""
+            openssl: "no"
+          - build: "openssl"
+            filename: "openssl-"
+            openssl: "yes"
+
+    steps:
+      - run: git config --global core.autocrlf input
+
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Move packages_${{ matrix.build }}.cmd to packages.cmd
+        run: Copy-Item -Path packages_${{ matrix.build }}.cmd -Destination packages.cmd
+
+      - name: Install cygwin-installer.cmd
+        run: .\cygwin-installer.cmd
+
+      - name: Build static
+        run: |
+          .\system\bin\bash.exe -l build.sh ${{ matrix.openssl }}
+
+      - name: Archive build
+        run: Compress-Archive ${{ matrix.name }} ${{ matrix.name }}-amd64-${{ matrix.filename }}win.zip
+
+      - name: Host - Bootstrap release tag
+        run: echo "release_tag=$(Get-Content -Path iperf3_version)" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: "Create release"
+        uses: ncipollo/release-action@v1
+        with:
+          prerelease: false
+          artifacts: "${{ matrix.name }}-amd64-${{ matrix.filename }}win.zip"
+          replacesArtifacts: true
+          tag: ${{ env.release_tag }}
+          name: ${{ matrix.name }} ${{ env.release_tag }}
+          allowUpdates: true
+          token: ${{ secrets.GITHUB_TOKEN }}
