@@ -83,7 +83,7 @@ jobs:
         if: env.continue_build == 'yes'
         uses: benc-uk/workflow-dispatch@v1
         with:
-          workflow: "multiarch_qemu_iperf3.yml"
+          workflow: "alpine_multi.yml"
           repo: "userdocs/iperf3-static"
           token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -101,6 +101,6 @@ jobs:
         uses: codex-/await-local-workflow-run@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          workflow: "multiarch_qemu_iperf3.yml"
+          workflow: "alpine_multi.yml"
           timeout_mins: 20
           poll_interval_ms: 10000
