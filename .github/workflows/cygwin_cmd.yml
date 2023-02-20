@@ -26,7 +26,7 @@ jobs:
             filename: "openssl-"
             openssl: "yes"
 
-    name: ${{ matrix.name }}-${ matrix.arch }}-${{ matrix.filename }}win.zip
+    name: ${{ matrix.name }}-${{ matrix.arch }}-${{ matrix.filename }}win.zip
 
     steps:
       - run: git config --global core.autocrlf input

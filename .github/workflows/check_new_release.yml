@@ -71,14 +71,6 @@ jobs:
 
           echo "continue_build=${{ env.continue_build }}" >> $GITHUB_OUTPUT
 
-      - name: trigger workflow - iperf3 cygwin cmd
-        if: env.continue_build == 'yes'
-        uses: benc-uk/workflow-dispatch@v1
-        with:
-          workflow: "cygwin_cmd.yml"
-          repo: "userdocs/iperf3-static"
-          token: ${{ secrets.GITHUB_TOKEN }}
-
       - name: trigger workflow - iperf3 alpine multi
         if: env.continue_build == 'yes'
         uses: benc-uk/workflow-dispatch@v1
@@ -87,14 +79,13 @@ jobs:
           repo: "userdocs/iperf3-static"
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Await local workflow - cygwin cmd
+      - name: trigger workflow - iperf3 cygwin cmd
         if: env.continue_build == 'yes'
-        uses: codex-/await-local-workflow-run@v1
+        uses: benc-uk/workflow-dispatch@v1
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
           workflow: "cygwin_cmd.yml"
-          timeout_mins: 20
-          poll_interval_ms: 10000
+          repo: "userdocs/iperf3-static"
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Await local workflow - alpine multi
         if: env.continue_build == 'yes'
@@ -102,5 +93,14 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           workflow: "alpine_multi.yml"
+          timeout_mins: 20
+          poll_interval_ms: 10000
+
+      - name: Await local workflow - cygwin cmd
+        if: env.continue_build == 'yes'
+        uses: codex-/await-local-workflow-run@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          workflow: "cygwin_cmd.yml"
           timeout_mins: 20
           poll_interval_ms: 10000
