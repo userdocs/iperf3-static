@@ -41,15 +41,15 @@ printf '\n%b\n\n' " \e[94m\U25cf\e[0m Copy dll dependencies"
 if [[ -d "$HOME/iperf3/bin" ]]; then
 	# default requirements
 	# cmd
-	[[ -f "$HOME/system/bin/cygwin1.dll" ]] && cp -f "$HOME/system/bin/cygwin1.dll" "$HOME/iperf3/bin"
+	[[ -f "$HOME/cygwin/bin/cygwin1.dll" ]] && cp -f "$HOME/cygwin/bin/cygwin1.dll" "$HOME/iperf3/bin"
 	# action
 	[[ -f "/cygdrive/c/cygwin/bin/cygwin1.dll" ]] && cp -f "/cygdrive/c/cygwin/bin/cygwin1.dll" "$HOME/iperf3/bin"
 
 	if [[ "${with_openssl}" == 'yes' ]]; then
 		# openssl requirements
 		# cmd
-		[[ -f "$HOME/system/bin/cygcrypto-1.1.dll" ]] && cp -f "$HOME/system/bin/cygcrypto-1.1.dll" "$HOME/iperf3/bin"
-		[[ -f "$HOME/system/bin/cygz.dll" ]] && cp -f "$HOME/system/bin/cygz.dll" "$HOME/iperf3/bin"
+		[[ -f "$HOME/cygwin/bin/cygcrypto-1.1.dll" ]] && cp -f "$HOME/cygwin/bin/cygcrypto-1.1.dll" "$HOME/iperf3/bin"
+		[[ -f "$HOME/cygwin/bin/cygz.dll" ]] && cp -f "$HOME/cygwin/bin/cygz.dll" "$HOME/iperf3/bin"
 		# action
 		[[ -f "/cygdrive/c/cygwin/bin/cygcrypto-1.1.dll" ]] && cp -f "/cygdrive/c/cygwin/bin/cygcrypto-1.1.dll" "$HOME/iperf3/bin"
 		[[ -f "/cygdrive/c/cygwin/bin/cygz.dll" ]] && cp -f "/cygdrive/c/cygwin/bin/cygz.dll" "$HOME/iperf3/bin"

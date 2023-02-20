@@ -40,7 +40,7 @@ jobs:
 
       - name: Build static
         run: |
-          .\system\bin\bash.exe -l build.sh ${{ matrix.openssl }}
+          .\cygwin\bin\bash.exe -l build.sh ${{ matrix.openssl }}
 
       - name: Archive build
         run: Compress-Archive ${{ matrix.name }} ${{ matrix.name }}-amd64-${{ matrix.filename }}win.zip

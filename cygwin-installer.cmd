@@ -75,8 +75,8 @@ echo ###########################################################
 echo.
 
 set LFTP4WIN_BASE=%~dp0
-set LFTP4WIN_ROOT=%~dp0system
-set INSTALL_TEMP=%~dp0system\tmp
+set LFTP4WIN_ROOT=%~dp0cygwin
+set INSTALL_TEMP=%~dp0cygwin\tmp
 
 set USERNAME=%LFTP4WIN_USERNAME%
 set GROUP=None
@@ -164,8 +164,8 @@ if "%DELETE_CYGWIN_PACKAGE_CACHE%" == "yes" (
 ) > "%LFTP4WIN_ROOT%\etc\fstab"
 
 :: Configure our Cygwin Environment
-"%LFTP4WIN_ROOT%\bin\mkgroup.exe" -c > system/etc/group || goto :fail
-"%LFTP4WIN_ROOT%\bin\bash.exe" -c "echo ""$USERNAME:*:1001:$(system/bin/mkpasswd -c | system/bin/cut -d':' -f 4):$(system/bin/mkpasswd -c | system/bin/cut -d':' -f 5):$(system/bin/cygpath.exe -u ""%~dp0home""):/bin/bash""" > system/etc/passwd || goto :fail
+"%LFTP4WIN_ROOT%\bin\mkgroup.exe" -c > cygwin/etc/group || goto :fail
+"%LFTP4WIN_ROOT%\bin\bash.exe" -c "echo ""$USERNAME:*:1001:$(cygwin/bin/mkpasswd -c | cygwin/bin/cut -d':' -f 4):$(cygwin/bin/mkpasswd -c | cygwin/bin/cut -d':' -f 5):$(cygwin/bin/cygpath.exe -u ""%~dp0""):/bin/bash""" > cygwin/etc/passwd || goto :fail
 :: Fix a symlink bug in Cygwin
 "%LFTP4WIN_ROOT%\bin\ln.exe" -fsn '../usr/share/terminfo' '/lib/terminfo' || goto :fail
 
@@ -185,7 +185,7 @@ echo.
   echo unset HISTFILE
   echo.
   echo rm -f /etc/{passwd,group}
-  echo sed -ri "s@# db_home: (.*)@db_home: ${HOME%%/*}@" /etc/nsswitch.conf
+  echo sed -ri "s@# db_home: (.*)@db_home: ${HOME}@" /etc/nsswitch.conf
   echo.
   echo ## Adjust the Cygwin packages cache path
   echo.
