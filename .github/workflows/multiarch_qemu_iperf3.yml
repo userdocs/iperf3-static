@@ -1,8 +1,14 @@
 name: iperf3 qemu multiarch
+
 on:
-  push:
-  pull_request:
   workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions: write-all
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -73,19 +79,17 @@ jobs:
       - name: Create path to binary env
         run: echo "binary_path=$(echo ${{ github.workspace }}/bin/${{ matrix.name }}-${{ matrix.arch }})" >> $GITHUB_ENV
 
-      - name: Create release name env
-        run: echo "binary_release_name=$(strings ${{ env.binary_path }} | sed -rn 's|^(iperf) (3.*)|\1 \2|p' | head -n 1)" >> $GITHUB_ENV
-
       - name: Create tag env
-        run: echo "binary_tag=$(strings ${{ env.binary_path }} | sed -rn 's|^(iperf) (3.*)|\2|p' | head -n 1)" >> $GITHUB_ENV
+        run: |
+          echo "release_tag=$(sed -rn 's|(.*)\[(.*)],\[https://github.com/esnet/iperf],(.*)|\2|p' ${{ matrix.name }}/configure.ac)" >> $GITHUB_ENV
 
       - name: "Create release"
         uses: ncipollo/release-action@v1
         with:
           prerelease: false
-          artifacts: "${{ env.binary_path }}"
+          artifacts: ${{ env.binary_path }}
           replacesArtifacts: true
-          tag: "${{ env.binary_tag }}"
-          name: "${{ env.binary_release_name }}"
+          tag: ${{ env.release_tag }}
+          name: ${{ matrix.name }} ${{ env.release_tag }}
           allowUpdates: true
           token: ${{ secrets.GITHUB_TOKEN }}

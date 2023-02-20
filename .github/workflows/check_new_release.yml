@@ -1,0 +1,106 @@
+name: check for new releases iperf3
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions: write-all
+
+jobs:
+  skip_duplicate_job:
+    runs-on: ubuntu-latest
+    outputs:
+      should_skip: ${{ steps.skip_check.outputs.should_skip }}
+    steps:
+      - id: skip_check
+        uses: fkirc/skip-duplicate-actions@v5
+        with:
+          concurrent_skipping: "always"
+          cancel_others: "false"
+          skip_after_successful_duplicate: false
+          do_not_skip: ""
+
+  check_release:
+    if: ${{ needs.skip_duplicate_job.outputs.should_skip != 'true' }}
+    needs: skip_duplicate_job
+    outputs:
+      continue_build: ${{ steps.continue_build.outputs.continue_build }}
+    runs-on: ubuntu-latest
+    name: "Check for latest iperf3 tags"
+    env:
+      continue_build: "no"
+
+    steps:
+      - name: Get latest esnet/iperf tag
+        run: |
+          cat > "upstream_iperf3_tag.sh" <<- UPSTREAM_IPERF3_TAG
+          declare -A upstream_iperf3_tag
+          upstream_iperf3_tag[iperf3]="$(git ls-remote -q -t --refs "https://github.com/esnet/iperf.git" | awk '{sub("refs/tags/", "");sub("(.*)(-|rc|iperf|trunk|3.1b1|3.1b2|3.1b3)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n1)"
+          UPSTREAM_IPERF3_TAG
+
+      - name: Get latest userdocs/iperf3-static tag
+        run: |
+          cat > "local_iperf3_tag.sh" <<- LOCAL_IPERF3_TAG
+          declare -A local_iperf3_tag
+          local_iperf3_tag[iperf3]="$(git ls-remote -q -t --refs "https://github.com/userdocs/iperf3-static.git" | awk '{sub("refs/tags/", "");sub("(.*)(-|rc|iperf|trunk|3.1b1|3.1b2|3.1b3)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n1)"
+          LOCAL_IPERF3_TAG
+
+      - name: Test values - latest upstream vs local tags
+        id: continue_build
+        run: |
+          source upstream_iperf3_tag.sh
+          source local_iperf3_tag.sh
+
+          ver() {
+            local test_array
+            read -ra test_array < <(printf "%s" "${@//./ }")
+            printf "%d%03d%03d%03d" "${test_array[@]}"
+          }
+
+          for iray in "${!upstream_iperf3_tag[@]}"; do
+            if [[ "$(ver "${upstream_iperf3_tag[$iray]}")" -gt "$(ver "${local_iperf3_tag[$iray]}")" ]]; then
+              printf "%-14s latest:%-10s iperf3-static:%-10s %s\n" "$iray" "${upstream_iperf3_tag[$iray]}" "${local_iperf3_tag[$iray]}" "< New version available - workflow will be triggered"
+              echo "continue_build=yes" >> $GITHUB_ENV
+            else
+              printf "%-14s latest:%-10s iperf3-static:%-10s\n" "$iray" "${upstream_iperf3_tag[$iray]}" "${local_iperf3_tag[$iray]}"
+            fi
+          done
+
+          echo "continue_build=${{ env.continue_build }}" >> $GITHUB_OUTPUT
+
+      - name: trigger workflow - iperf3 cygwin
+        if: env.continue_build == 'yes'
+        uses: benc-uk/workflow-dispatch@v1
+        with:
+          workflow: "cygwin_cmd.yml"
+          repo: "userdocs/iperf3-static"
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: trigger workflow - iperf3 cygwin
+        if: env.continue_build == 'yes'
+        uses: benc-uk/workflow-dispatch@v1
+        with:
+          workflow: "multiarch_qemu_iperf3.yml"
+          repo: "userdocs/iperf3-static"
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Await local workflow - cygwin cmd
+        if: env.continue_build == 'yes'
+        uses: codex-/await-local-workflow-run@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          workflow: "cygwin_cmd.yml"
+          timeout_mins: 20
+          poll_interval_ms: 10000
+
+      - name: Await local workflow - alpine multi
+        if: env.continue_build == 'yes'
+        uses: codex-/await-local-workflow-run@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          workflow: "multiarch_qemu_iperf3.yml"
+          timeout_mins: 20
+          poll_interval_ms: 10000
