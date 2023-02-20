@@ -71,7 +71,7 @@ jobs:
 
           echo "continue_build=${{ env.continue_build }}" >> $GITHUB_OUTPUT
 
-      - name: trigger workflow - iperf3 cygwin
+      - name: trigger workflow - iperf3 cygwin cmd
         if: env.continue_build == 'yes'
         uses: benc-uk/workflow-dispatch@v1
         with:
@@ -79,7 +79,7 @@ jobs:
           repo: "userdocs/iperf3-static"
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: trigger workflow - iperf3 cygwin
+      - name: trigger workflow - iperf3 alpine multi
         if: env.continue_build == 'yes'
         uses: benc-uk/workflow-dispatch@v1
         with:
