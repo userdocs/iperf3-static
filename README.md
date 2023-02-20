@@ -1,11 +1,18 @@
+# iperf3 static builds
 
-Built on [Alpine linux](https://alpinelinux.org) edge
+Built on:
+
+- [Alpine linux](https://alpinelinux.org) edge via arch emulation
+- Windows via Github Actions runners for x86_64
 
 Static binaries are available here: https://github.com/userdocs/iperf3-static/releases/latest
 
-### Build Platforms
+## Build Platforms
 
-Alpine linux as the host OS.
+- Alpine
+- Windows
+
+### Alpine linux as the host OS
 
 Builds are created using https://github.com/multiarch/qemu-user-static and arch specific docker images detailed in the table below.
 
@@ -19,17 +26,52 @@ Builds are created using https://github.com/multiarch/qemu-user-static and arch 
 |     x86     |      linux/i386      |  i386/alpine:edge   |
 |   x86_64    |     linux/amd64      |  amd64/alpine:edge  |
 
+### Windows
+
+Static builds created via cygwin64 using this action
+
+https://github.com/cygwin/cygwin-install-action
+
+### Credits and acknowledgements
+
+Some awesome people's contributions have helped inspire the creation of a Github action for Windows build and release. It would not have happen for the contributions of these users in providing iperf3 builds for Windows. So thank you, to you both.
+
+They are available for x86_64 in two versions.
+
+- basic (without openssl)
+- openssl
+
+[www.neowin.net](https://www.neowin.net/forum/topic/1234695-iperf-313-windows-build) via [budman](https://www.neowin.net/forum/profile/14624-budman/)
+
+https://github.com/ar51an/iperf3-win-builds via [cryptanalyst](https://www.neowin.net/forum/profile/170754-cryptanalyst/)
+
+I used the [budman](https://www.neowin.net/forum/profile/14624-budman/) builds originally before making my own for another project.
+
 ### Generic Build dependencies
 
-~~~
+```
 apk add build-base pkgconf autoconf automake curl libtool git perl openssl-libs-static openssl-dev linux-headers
-~~~
+```
 
-Debian linux (Cygwin packages will be similar)
+#### Debian linux
 
-~~~
+```
 apt install -y build-essential pkg-config automake libtool libssl-dev git perl
-~~~
+```
+
+#### Cygwin packages
+
+Without openssl
+
+```bash
+automake,gcc-core,gcc-g++,git,libtool,make,pkg-config
+```
+
+With openssl
+
+```bash
+automake,gcc-core,gcc-g++,git,libtool,make,pkg-config,libssl-devel,zlib-devel
+```
 
 ### Generic Build Instructions
 
@@ -39,17 +81,25 @@ Clone the git repo - linux + Cygwin
 git clone https://github.com/esnet/iperf.git ~/iperf3 && cd ~/iperf3
 ```
 
-Bootstrap - Cygwin only
+Bootstrap - If you cloned the repo
 
 ```bash
 ./bootstrap.sh
-./configure --prefix=$HOME
 ```
 
 Configure - linux + Cygwin
 
 ```bash
 ./configure --disable-shared --enable-static-bin --prefix=$HOME
+```
+
+Cygwin openssl
+
+The configure requires a fix to pass the test on Cygwin + openssl.
+
+```bash
+sed -ri 's|OPENSSL_LIBS="-lssl -lcrypto"|OPENSSL_LIBS="${OPENSSL_LIBS}"|g' "configure"
+./configure --with-openssl=/usr OPENSSL_LIBS="-l:libssl.dll.a -l:libcrypto.dll.a" --disable-shared --enable-static-bin --prefix="$HOME"
 ```
 
 Build - linux + Cygwin
@@ -61,24 +111,24 @@ make install
 
 ### Check the linking was done properly
 
-~~~
+```
 ldd ~/bin/iperf3
-~~~
+```
 
 ### Version
 
 Use this command to check the version.
 
-~~~
+```
 ~/bin/iperf3 -v
-~~~
+```
 
 Will show something like this.
 
-~~~
+```
 iperf 3.10.1 (cJSON 1.7.13)
 Optional features available: CPU affinity setting, IPv6 flow label, TCP congestion algorithm setting, sendfile / zerocopy, socket pacing, authentication, bind to device, support IPv4 don't fragment
-~~~
+```
 
 ### Use the static binaries from this repo
 
@@ -142,8 +192,26 @@ wget -qO ~/bin/iperf3 https://github.com/userdocs/iperf3-static/releases/latest/
 chmod 700 ~/bin/iperf3
 ```
 
+Windows builds required being bundled with Cygwin dlls to work so these are not single static binaries. They have a directory structure like this.
+
+```
+iperf3
+    |___bin
+    |___include
+    |___lib
+    |___share
+```
+
+Windows x64 no openssl
+
+https://github.com/userdocs/iperf3-static/releases/download/3.13/iperf3-amd64-win.zip
+
+Windows x64 with openssl
+
+https://github.com/userdocs/iperf3-static/releases/download/3.13/iperf3-amd64-openssl-win.zip
+
 Check the version:
 
-~~~
+```
 ~/bin/iperf3 -v
-~~~
+```
