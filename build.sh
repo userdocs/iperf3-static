@@ -54,4 +54,5 @@ if [[ -d "$HOME/iperf3/bin" ]]; then
 		[[ -f "/cygdrive/c/cygwin/bin/cygcrypto-1.1.dll" ]] && cp -f "/cygdrive/c/cygwin/bin/cygcrypto-1.1.dll" "$HOME/iperf3/bin"
 		[[ -f "/cygdrive/c/cygwin/bin/cygz.dll" ]] && cp -f "/cygdrive/c/cygwin/bin/cygz.dll" "$HOME/iperf3/bin"
 	fi
+	printf '\n%b\n\n' " \e[92m\U25cf\e[0m Copied the dll dependencies"
 fi
