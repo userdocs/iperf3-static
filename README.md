@@ -204,11 +204,11 @@ iperf3
 
 Windows x64 no openssl
 
-https://github.com/userdocs/iperf3-static/releases/download/3.13/iperf3-amd64-win.zip
+https://github.com/userdocs/iperf3-static/releases/latest/download/iperf3-amd64-win.zip
 
 Windows x64 with openssl
 
-https://github.com/userdocs/iperf3-static/releases/download/3.13/iperf3-amd64-openssl-win.zip
+https://github.com/userdocs/iperf3-static/releases/latest/download/iperf3-amd64-openssl-win.zip
 
 Check the version:
 
