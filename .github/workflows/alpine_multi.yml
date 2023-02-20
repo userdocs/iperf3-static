@@ -1,4 +1,4 @@
-name: iperf3 qemu multiarch
+name: Build iperf3 multi static via alpine
 
 on:
   workflow_dispatch:
