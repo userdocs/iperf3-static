@@ -9,8 +9,8 @@ Static binaries are available here: https://github.com/userdocs/iperf3-static/re
 
 ## Build Platforms
 
-- Alpine
-- Windows
+- Alpine - all supported architectures
+- Windows - x86_64
 
 ### Alpine linux as the host OS
 
@@ -28,13 +28,13 @@ Builds are created using https://github.com/multiarch/qemu-user-static and arch 
 
 ### Windows
 
-Static builds created via cygwin64 using this action
+Static Cygwin builds created via cygwin64 using this action
 
 https://github.com/cygwin/cygwin-install-action
 
 ### Credits and acknowledgements
 
-Some awesome people's contributions have helped inspire the creation of a Github action for Windows build and release. It would not have happen for the contributions of these users in providing iperf3 builds for Windows. So thank you, to you both.
+Some awesome people's contributions have helped inspire the creation of a Github action for Windows build and release. It would not have happened withouth the contributions of these users in providing iperf3 builds for Windows. So thank you, to you both.
 
 They are available for x86_64 in two versions.
 
