@@ -75,7 +75,7 @@ jobs:
 
       - name: trigger workflow - iperf3 alpine multi
         if: env.continue_build == 'yes'
-        uses: benc-uk/workflow-dispatch@v1
+        uses: benc-uk/workflow-dispatch@v121
         with:
           workflow: "alpine_multi.yml"
           repo: "userdocs/iperf3-static"
@@ -83,7 +83,7 @@ jobs:
 
       - name: trigger workflow - iperf3 cygwin cmd
         if: env.continue_build == 'yes'
-        uses: benc-uk/workflow-dispatch@v1
+        uses: benc-uk/workflow-dispatch@v121
         with:
           workflow: "cygwin_cmd.yml"
           repo: "userdocs/iperf3-static"
