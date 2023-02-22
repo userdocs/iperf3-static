@@ -28,21 +28,20 @@ jobs:
 
     name: ${{ matrix.name }}-${{ matrix.arch }}-${{ matrix.filename }}win.zip
 
+    env:
+      cygwin_path: ""
+
     steps:
       - run: git config --global core.autocrlf input
 
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Move packages_${{ matrix.build }}.cmd to packages.cmd
-        run: Copy-Item -Path packages_${{ matrix.build }}.cmd -Destination packages.cmd
-
       - name: Install cygwin-installer.cmd
         run: .\cygwin-installer.cmd
 
       - name: Build static
-        run: |
-          .\cygwin\bin\bash.exe -l build.sh ${{ matrix.openssl }}
+        run: .\cygwin\bin\bash.exe -l build.sh "${{ matrix.openssl }}" "${{ env.cygwin_path }}"
 
       - name: Archive build
         run: Compress-Archive ${{ matrix.name }} ${{ matrix.name }}-amd64-${{ matrix.filename }}win.zip
