@@ -89,18 +89,21 @@ Bootstrap - If you cloned the repo
 
 Configure - linux + Cygwin
 
+Note: Cygwin requires requires compiling openssl and zlib static libs to link statically. Otherwise you compile dynamically
+
+Static
+
 ```bash
 ./configure --disable-shared --enable-static-bin --prefix=$HOME
 ```
 
-Cygwin openssl
-
-The configure requires a fix to pass the test on Cygwin + openssl.
+Dynamic
 
 ```bash
-sed -ri 's|OPENSSL_LIBS="-lssl -lcrypto"|OPENSSL_LIBS="${OPENSSL_LIBS}"|g' "configure"
-./configure --with-openssl=/usr OPENSSL_LIBS="-l:libssl.dll.a -l:libcrypto.dll.a" --disable-shared --enable-static-bin --prefix="$HOME"
+./configure --prefix=$HOME
 ```
+
+Cygwin openssl requires compiling openssl and zlib
 
 Build - linux + Cygwin
 
