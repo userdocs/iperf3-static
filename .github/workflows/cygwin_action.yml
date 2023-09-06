@@ -35,7 +35,7 @@ jobs:
       - run: git config --global core.autocrlf input
 
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Host - Get packages_list
         run: echo "packages_list=$(Get-Content -Path packages.cmd)" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
