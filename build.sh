@@ -24,7 +24,7 @@ if [[ "${with_openssl}" == 'yes' ]]; then
 	curl -sL "https://github.com/userdocs/qbt-workflow-files/releases/latest/download/openssl.tar.xz" -o "${HOME}/openssl.tar.xz"
 	printf '\n%b\n' " \e[94m\U25cf\e[0m Extracting openssl"
 	tar xf "${HOME}/openssl.tar.xz" -C "${HOME}"
-	cd "${HOME}/openssl" || exit 1
+	cd "${HOME}/$(tar tf openssl.tar.xz | head -1 | cut -f1 -d"/")" || exit 1
 	printf '\n%b\n\n' " \e[94m\U25cf\e[0m Building openssl"
 	./config --prefix="${cygwin_path}" threads no-shared no-dso no-comp
 	make -j"$(nproc)"
