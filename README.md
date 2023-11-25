@@ -28,13 +28,13 @@ Builds are created using https://github.com/multiarch/qemu-user-static and arch 
 
 ### Windows
 
-Static Cygwin builds created via cygwin64 using this action
+Static Cygwin builds created via cygwin64 using this custom installer
 
-https://github.com/cygwin/cygwin-install-action
+https://github.com/userdocs/iperf3-static/blob/master/cygwin-installer.cmd
 
 ### Credits and acknowledgements
 
-Some awesome people's contributions have helped inspire the creation of a Github action for Windows build and release. It would not have happened withouth the contributions of these users in providing iperf3 builds for Windows. So thank you, to you both.
+Some awesome people's contributions have helped inspire the creation of a Github action for Windows build and release. It would not have happened without the contributions of these users in providing iperf3 builds for Windows. So thank you, to you both.
 
 They are available for x86_64 in two versions.
 
@@ -218,3 +218,44 @@ Check the version:
 ```
 ~/bin/iperf3 -v
 ```
+
+## gh attestation verify
+
+Binaries built from the release of `3.17.1+` use [actions/attest-build-provenance](https://github.com/actions/attest-build-provenance)
+
+Verify the integrity and provenance of an artifact using its associated cryptographically signed attestations.
+
+https://cli.github.com/manual/gh_attestation_verify
+
+For example:
+
+```bash
+gh attestation verify iperf3-amd64 -o userdocs
+```
+
+Will give you this result for the `release-5.0.0_v2.0.10` revision `1` binary.
+
+```bash
+Loaded digest sha256:84f9851d0647d3d618c66d64cac10ed1eb37583b3aaf3bb0baac88bf446fb10a for file://iperf3-amd64
+Loaded 6 attestations from GitHub API
+✓ Verification succeeded!
+
+sha256:84f9851d0647d3d618c66d64cac10ed1eb37583b3aaf3bb0baac88bf446fb10a was attested by:
+REPO                    PREDICATE_TYPE                  WORKFLOW
+userdocs/iperf3-static  https://slsa.dev/provenance/v1  .github/workflows/alpine_multi.yml@refs/heads/master
+```
+
+## Virustotal scanning
+
+All binaries and dlls are scanned by virus total and the results uploaded using this action
+
+https://github.com/crazy-max/ghaction-virustotal
+
+The results url is uploaded to the release assets in a text file, for example.
+
+```
+iperf3-amd64-virustotal-analysis.txt
+```
+
+> [!NOTE]
+> The sha256 checksum from the github attestation will match the one in the virus total report.

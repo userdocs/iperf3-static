@@ -2,6 +2,20 @@ name: Build iperf3 x64 static via cygwin-cmd
 
 on:
   workflow_dispatch:
+    inputs:
+      source_repo:
+        description: "Define the git repo used for the build"
+        required: true
+        default: "https://github.com/esnet/iperf.git"
+      source_branch:
+        description: "Specify the branch to build"
+        required: true
+        default: "master"
+      artifacts_only:
+        description: "No release - artifacts only"
+        required: true
+        default: false
+        type: boolean
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -41,21 +55,54 @@ jobs:
         run: .\cygwin-installer.cmd
 
       - name: Build static
-        run: .\cygwin\bin\bash.exe -l build.sh "${{ matrix.openssl }}" "${{ env.cygwin_path }}"
+        run: .\cygwin\bin\bash.exe -l build.sh "${{ matrix.openssl }}" "${{ env.cygwin_path }}" "${{ inputs.source_repo }}" "${{ inputs.source_branch }}"
+
+      - name: VirusTotal Scan
+        id: virustotal
+        uses: crazy-max/ghaction-virustotal@v4
+        with:
+          vt_api_key: ${{ secrets.VT_API_KEY }}
+          files: |
+            ${{ matrix.name }}/bin/iperf3.exe
+            ${{ matrix.name }}/bin/cygwin1.dll
+
+      - name: VirusTotal Analysis URLs
+        if: inputs.artifacts_only == '0'
+        run: echo ${{ steps.virustotal.outputs.analysis }} | cut -d '=' -f 2-4 >> ${{ matrix.name }}-${{ matrix.arch }}-${{ matrix.filename }}win-virustotal-analysis.txt
 
       - name: Archive build
+        run: Compress-Archive ${{ matrix.name }} ${{ matrix.name }}-${{ matrix.arch }}-${{ matrix.filename }}win.zip
+
+      - name: Generate artifact attestation  ${{ github.event.inputs.distinct_id }}
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: |
+            ${{ matrix.name }}-${{ matrix.arch }}-${{ matrix.filename }}win.zip
+            ${{ matrix.name }}/bin/iperf3.exe
+            ${{ matrix.name }}/bin/cygwin1.dll
+
+      - name: Archive build
+        if: inputs.artifacts_only == '0'
         run: Compress-Archive ${{ matrix.name }} ${{ matrix.name }}-amd64-${{ matrix.filename }}win.zip
 
       - name: Host - Bootstrap release tag
         run: echo "release_tag=$(Get-Content -Path iperf3_version)" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: "Create release"
+        if: inputs.artifacts_only == '0'
         uses: ncipollo/release-action@v1
         with:
           prerelease: false
-          artifacts: "${{ matrix.name }}-amd64-${{ matrix.filename }}win.zip"
+          artifacts: ${{ matrix.name }}-${{ matrix.arch }}-${{ matrix.filename }}win.zip,${{ matrix.name }}-${{ matrix.arch }}-${{ matrix.filename }}win-virustotal-analysis.txt
           replacesArtifacts: true
           tag: ${{ env.release_tag }}
           name: ${{ matrix.name }} ${{ env.release_tag }}
           allowUpdates: true
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: "Create artifact"
+        if: inputs.artifacts_only == '1'
+        uses: actions/upload-artifact@v4
+        with:
+          name: "${{ matrix.name }}-amd64-${{ matrix.filename }}win"
+          path: "${{ matrix.name }}"
