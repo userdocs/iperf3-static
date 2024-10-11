@@ -12,10 +12,10 @@ printf '%b\n' " \e[93m\U25cf\e[0m Cygwin path = ${cygwin_path}"
 
 if [[ "${with_openssl}" == 'yes' ]]; then
 	printf '\n%b\n' " \e[94m\U25cf\e[0m Downloading zlib"
-	wget -qO "${HOME}/zlib.tar.gz" "https://github.com/userdocs/qbt-workflow-files/releases/latest/download/zlib.tar.xz"
+	wget -qO "${HOME}/zlib.tar.xz" "https://github.com/userdocs/qbt-workflow-files/releases/latest/download/zlib.tar.xz"
 
 	printf '\n%b\n' " \e[94m\U25cf\e[0m Extracting zlib"
-	tar xf "${HOME}/zlib.tar.gz" -C "${HOME}"
+	tar xf "${HOME}/zlib.tar.xz" -C "${HOME}"
 	cd "${HOME}/zlib" || exit 1
 
 	printf '\n%b\n\n' " \e[94m\U25cf\e[0m Configuring zlib"
@@ -26,11 +26,11 @@ if [[ "${with_openssl}" == 'yes' ]]; then
 	make install
 
 	printf '\n%b\n' " \e[94m\U25cf\e[0m Downloading openssl"
-	wget -qO "${HOME}/openssl.tar.gz" "https://github.com/userdocs/qbt-workflow-files/releases/latest/download/openssl.tar.xz"
+	wget -qO "${HOME}/openssl.tar.xz" "https://github.com/userdocs/qbt-workflow-files/releases/latest/download/openssl.tar.xz"
 
 	printf '\n%b\n' " \e[94m\U25cf\e[0m Extracting openssl"
 	mkdir -p "${HOME}/openssl"
-	tar xf "${HOME}/openssl.tar.gz" --strip-components=1 -C "${HOME}/openssl"
+	tar xf "${HOME}/openssl.tar.xz" --strip-components=1 -C "${HOME}/openssl"
 	cd "${HOME}/openssl" || exit 1
 
 	printf '\n%b\n\n' " \e[94m\U25cf\e[0m Configuring openssl"
