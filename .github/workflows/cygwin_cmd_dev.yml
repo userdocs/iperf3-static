@@ -1,0 +1,84 @@
+name: Dev - Build iperf3 x64 static via cygwin-cmd
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_repo:
+        description: "Define the git repo used for the build"
+        required: true
+        default: "https://github.com/esnet/iperf.git"
+      source_branch:
+        description: "Specify the branch to build"
+        required: true
+        default: "master"
+      artifacts_only:
+        description: "No release - artifacts only"
+        required: true
+        default: true
+        type: boolean
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions: write-all
+
+jobs:
+  build:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        name: [iperf3]
+        build: [basic, openssl]
+        arch: [amd64]
+        include:
+          - build: "basic"
+            filename: ""
+            openssl: "no"
+          - build: "openssl"
+            filename: "openssl-"
+            openssl: "yes"
+
+    name: ${{ matrix.name }}-${{ matrix.arch }}-${{ matrix.filename }}win.zip
+
+    env:
+      cygwin_path: ""
+
+    steps:
+      - run: git config --global core.autocrlf input
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install cygwin-installer.cmd
+        run: .\cygwin-installer.cmd
+
+      - name: Build static
+        run: .\cygwin\bin\bash.exe -l build.sh "${{ matrix.openssl }}" "${{ env.cygwin_path }}" "${{ inputs.source_repo }}" "${{ inputs.source_branch }}"
+
+      - name: Archive build
+        if: inputs.artifacts_only == '0'
+        run: Compress-Archive ${{ matrix.name }} ${{ matrix.name }}-amd64-${{ matrix.filename }}win.zip
+
+      - name: Host - Bootstrap release tag
+        run: echo "release_tag=$(Get-Content -Path iperf3_version)" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: "Create release"
+        if: inputs.artifacts_only == '0'
+        uses: ncipollo/release-action@v1
+        with:
+          prerelease: false
+          artifacts: "${{ matrix.name }}-amd64-${{ matrix.filename }}win.zip"
+          replacesArtifacts: true
+          tag: ${{ env.release_tag }}
+          name: ${{ matrix.name }} ${{ env.release_tag }}
+          allowUpdates: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: "Create artifact"
+        if: inputs.artifacts_only == '1'
+        uses: actions/upload-artifact@v4
+        with:
+          name: "${{ matrix.name }}-amd64-${{ matrix.filename }}win"
+          path: "${{ matrix.name }}"
