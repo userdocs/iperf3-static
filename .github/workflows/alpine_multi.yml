@@ -29,13 +29,17 @@ on:
         options: ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
 
 permissions:
+  actions: write
   id-token: write
-  contents: read
+  contents: write
   attestations: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
+env:
+  GH_TOKEN: "${{ github.TOKEN }}"
 
 jobs:
   build:
@@ -83,10 +87,20 @@ jobs:
       LDFLAGS: "--static -static"
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout ${{ github.event.inputs.distinct_id }}
+        uses: actions/checkout@v4
 
-      - name: Docker multiarch bootstrap
-        run: docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+      - name: Host - phased updates ${{ github.event.inputs.distinct_id }}
+        run: printf '%s\n' 'APT::Get::Always-Include-Phased-Updates "false";' | sudo tee /etc/apt/apt.conf.d/99-phased-updates
+
+      - name: Host - update ${{ github.event.inputs.distinct_id }}
+        run: sudo apt-get update
+
+      - name: Host - upgrade ${{ github.event.inputs.distinct_id }}
+        run: sudo apt-get -y upgrade
+
+      - name: Host - set up qemu-user-static binfmt-support ${{ github.event.inputs.distinct_id }}
+        run: sudo apt install libpipeline1 qemu-user-static binfmt-support
 
       - name: Create docker multiarch ${{ matrix.platform }} container
         run: docker run --name multiarch -it -d -w /root -e CXXFLAGS="${{ env.CXXFLAGS }}" -e CPPFLAGS="${{ env.CPPFLAGS }}" -e LDFLAGS="${{ env.LDFLAGS }}" --platform ${{ matrix.platform }} -v ${{ github.workspace }}:/root ${{ matrix.arch }}/${{ matrix.os_id }}:${{ matrix.os_version_id }}
@@ -125,8 +139,10 @@ jobs:
           vt_api_key: ${{ secrets.VT_API_KEY }}
           files: ${{ env.binary_path }}
 
-      - name: VirusTotal Analysis URLs
-        run: echo ${{ steps.virustotal.outputs.analysis }} | cut -d '=' -f 2-4 >> ${{ matrix.name }}-${{ matrix.arch }}.url
+      - name: sha256sum ${{ github.event.inputs.distinct_id }}
+        run: |
+          printf '%s' https://www.virustotal.com/gui/file/$(sha256sum ${{ env.binary_path }} | awk '{print $1}') > ${{ matrix.name }}-${{ matrix.arch }}.url
+          cat ${{ matrix.name }}-${{ matrix.arch }}.url
 
       - name: Create tag env
         run: echo "release_tag=$(sed -rn 's|(.*)\[(.*)],\[https://github.com/esnet/iperf],(.*)|\2|p' ${{ matrix.name }}/configure.ac)" >> $GITHUB_ENV
@@ -149,13 +165,14 @@ jobs:
             ${{ matrix.name }}-${{ matrix.arch }}.url
 
   release:
+    name: "Publish iperf3 static release assets"
+
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     needs: build
-    if: always() && contains(needs.*.result, 'success') && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
+    if: inputs.artifacts_only == '0' && always() && contains(needs.*.result, 'success') && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Download artifacts
         uses: actions/download-artifact@v4
@@ -174,34 +191,56 @@ jobs:
 
           readarray -t release_sorted < <(printf '%s\n' "${dependency_version[@]}" | sort)
 
-          printf '%s\n\n' "## Virustotal scan results" >> "${{ github.workspace }}/release-body.md"
-
           for filenames in "${release_sorted[@]}"; do
-            printf '%s\n\n' "[${filenames//\.url/}]($(
-              head -1 "${filenames}" | tr -d '\n'
-            ))" >> "${{ github.workspace }}/release-body.md"
-            rm -f "${filenames}"
+            virustotal_url="$(head -1 "${filenames}" | tr -d '\n')"
+            sed -i -r 's|(\['${filenames//\.url/}'\])\((.*)\)|\1('${virustotal_url}')|' ${{ github.workspace }}/release-body.md
           done
+
+      - uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: Automated Change
+          file_pattern: "release-body.md"
 
       - name: "Publish release ${{ needs.build.outputs.set-tag }}"
         if: inputs.artifacts_only == '0'
         uses: ncipollo/release-action@v1
         with:
           prerelease: false
-          artifacts: release-artifacts/iperf3-*
+          artifacts: release-artifacts/iperf3-*[!\.url]
           replacesArtifacts: true
           tag: ${{ needs.build.outputs.set-tag }}
           name: iperf3 ${{ needs.build.outputs.set-tag }}
           allowUpdates: true
           bodyFile: release-body.md
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ github.token }}
 
-    name: "Publish iperf3 multi static via alpine release assets"
+  Docker:
+    runs-on: ubuntu-latest
+    if: inputs.artifacts_only == '0' && always() && contains(needs.*.result, 'success') && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
+    name: Docker build and push
+    needs: [build, release]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: gh cli trigger and watch local workflow
+        if: inputs.artifacts_only == '0'
+        run: |
+          workflow_run_id=""
+          workflow_run_name="docker.yml"
+
+          gh workflow run "${workflow_run_name}"
+
+          while [[ -z "$workflow_run_id" ]]; do
+            workflow_run_id=$(gh run list -w "${workflow_run_name}" -s "in_progress" -L 1 --json databaseId -q '.[].databaseId')
+          done
+
+          gh run watch "${workflow_run_id}" -i 5 --exit-status
 
   rerun-on-failure:
     if: failure() && inputs.skip_rerun == '0'
     name: rerun-on-failure
-    needs: release
+    needs: [build, release, docker]
     permissions:
       actions: write
     runs-on: ubuntu-latest

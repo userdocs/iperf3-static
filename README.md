@@ -1,30 +1,54 @@
 # iperf3 static builds
 
-Built on:
-
-- [Alpine linux](https://alpinelinux.org) edge via arch emulation
-- Windows via Github Actions runners for x86_64
-
-Static binaries are available here: https://github.com/userdocs/iperf3-static/releases/latest
-
 ## Build Platforms
 
-- Alpine - all supported architectures
-- Windows - x86_64
+- [Alpine linux](https://alpinelinux.org) edge using [qemu emulation](https://www.qemu.org)
+- Windows on Github Actions runners for x86_64 using a custom [Cywgin installer script](https://github.com/userdocs/iperf3-static/blob/master/cygwin-installer.cmd)
 
-### Alpine linux as the host OS
+## Available architectures
 
-Builds are created using https://github.com/multiarch/qemu-user-static and arch specific docker images detailed in the table below.
-
-| Alpine Arch | Docker platform arch |  Docker hub image   |
+| Alpine Arch | Docker platform arch |    ghcr.io image    |
 | :---------: | :------------------: | :-----------------: |
 |    armhf    |     linux/arm/v6     | arm32v6/alpine:edge |
 |    armv7    |     linux/arm/v7     | arm32v7/alpine:edge |
 |   aarch64   |     linux/arm64      | arm64v8/alpine:edge |
 |   ppc64le   |    linux/ppc64le     | ppc64le/alpine:edge |
 |    s390x    |     linux/s390x      |  s390x/alpine:edge  |
+|   riscv64   |    linux/riscv64     | riscv64/alpine:edge |
 |     x86     |      linux/i386      |  i386/alpine:edge   |
 |   x86_64    |     linux/amd64      |  amd64/alpine:edge  |
+
+## Download - Static Binaries
+
+Static binaries for Linux and Windows are available here: https://github.com/userdocs/iperf3-static/releases/latest
+
+Example:
+
+```
+curl -sLo- iperf3 https://github.com/userdocs/iperf3-static/releases/latest/download/iperf3-amd64
+chmod +x iperf3
+iperf3 --version
+```
+
+## Download - Docker
+
+Multiarch Docker images are available via https://github.com/users/userdocs/packages/container/package/iperf3-static
+
+Example:
+
+```bash
+docker pull ghcr.io/userdocs/iperf3-static:latest
+```
+
+To used the image dynamically
+
+```bash
+docker run -it ghcr.io/userdocs/iperf3-static:latest iperf3 --version
+```
+
+### Alpine
+
+Builds are created using https://github.com/multiarch/qemu-user-static and arch specific docker images detailed in the table below.
 
 ### Windows
 
@@ -32,22 +56,10 @@ Static Cygwin builds created via cygwin64 using this custom installer
 
 https://github.com/userdocs/iperf3-static/blob/master/cygwin-installer.cmd
 
-### Credits and acknowledgements
-
-Some awesome people's contributions have helped inspire the creation of a Github action for Windows build and release. It would not have happened without the contributions of these users in providing iperf3 builds for Windows. So thank you, to you both.
-
-They are available for x86_64 in two versions.
-
-- basic (without openssl)
-- openssl
-
-[www.neowin.net](https://www.neowin.net/forum/topic/1234695-iperf-313-windows-build) via [budman](https://www.neowin.net/forum/profile/14624-budman/)
-
-https://github.com/ar51an/iperf3-win-builds via [cryptanalyst](https://www.neowin.net/forum/profile/170754-cryptanalyst/)
-
-I used the [budman](https://www.neowin.net/forum/profile/14624-budman/) builds originally before making my own for another project.
-
 ### Generic Build dependencies
+
+<details closed>
+<summary>Expand for details</summary>
 
 ```
 apk add build-base pkgconf autoconf automake curl libtool git perl openssl-libs-static openssl-dev linux-headers
@@ -219,7 +231,12 @@ Check the version:
 ~/bin/iperf3 -v
 ```
 
+</details>
+
 ## gh attestation verify
+
+<details closed>
+<summary>Expand for details</summary>
 
 Binaries built from the release of `3.17.1+` use [actions/attest-build-provenance](https://github.com/actions/attest-build-provenance)
 
@@ -245,7 +262,12 @@ REPO                    PREDICATE_TYPE                  WORKFLOW
 userdocs/iperf3-static  https://slsa.dev/provenance/v1  .github/workflows/alpine_multi.yml@refs/heads/master
 ```
 
+</details>
+
 ## Virustotal scanning
+
+<details closed>
+<summary>Expand for details</summary>
 
 All binaries and dlls are scanned by virus total and the results uploaded using this action
 
@@ -259,3 +281,18 @@ iperf3-amd64-virustotal-analysis.txt
 
 > [!NOTE]
 > The sha256 checksum from the github attestation will match the one in the virus total report.
+
+</details>
+
+### Credits and acknowledgements
+
+<details closed>
+<summary>Expand for details</summary>
+
+Other contributions have helped inspire the creation of a GitHub action for a Windows build and release.
+
+[www.neowin.net](https://www.neowin.net/forum/topic/1234695-iperf-313-windows-build) via [budman](https://www.neowin.net/forum/profile/14624-budman/)
+
+https://github.com/ar51an/iperf3-win-builds via [cryptanalyst](https://www.neowin.net/forum/profile/170754-cryptanalyst/)
+
+</details>
