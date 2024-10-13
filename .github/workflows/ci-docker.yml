@@ -1,11 +1,7 @@
-name: Publish multiarch docker images
+name: ci - linux docker build
 
 on:
-  workflow_dispatch:
-
-permissions:
-  contents: write
-  packages: write
+  workflow_call:
 
 env:
   REGISTRY_IMAGE_GHCR: ghcr.io/${{ github.repository }}
@@ -49,14 +45,14 @@ jobs:
         id: gh_latest_tag
         run: |
           latest_tag="$(gh release list --json tagName -L 1 -q '.[0].tagName')"
-          echo "latest_tag=${latest_tag//+/-dev}" >> "$GITHUB_ENV"
-          echo "latest_tag=${latest_tag//+/-dev}" >> "$GITHUB_OUTPUT"
+          printf '%s\n' "latest_tag=${latest_tag//+/-dev}" >> "$GITHUB_ENV"
+          printf '%s\n' "latest_tag=${latest_tag//+/-dev}" >> "$GITHUB_OUTPUT"
 
       # Prepare environment variables
       - name: Prepare
         run: |
           platform=${{ matrix.platform }}
-          echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
+          printf '%s\n' "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
 
       # Generate Docker metadata
       - name: Docker meta
@@ -90,7 +86,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ github.token }}
 
       # Build and push Docker images
       - name: Build and push by digest
@@ -155,7 +151,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ github.token }}
 
       # Create and push manifest lists for ${{ env.SET_IMAGE_TAG }} tag
       - name: Create manifest list and push ${{ env.SET_IMAGE_TAG }}

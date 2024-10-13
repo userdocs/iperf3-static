@@ -1,0 +1,246 @@
+name: ci - main reusable caller
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_repo:
+        description: "Define the git repo used for the build"
+        required: true
+        default: "https://github.com/esnet/iperf.git"
+      source_branch:
+        description: "Specify the branch or tag to build"
+        required: true
+        default: "master"
+      skip_new_tag_check:
+        description: "Bypass new tag check to force build?"
+        required: true
+        default: false
+        type: boolean
+      linux_build_type:
+        description: "Build Linux iperf3 via crossbuild"
+        required: true
+        default: false
+        type: boolean
+      artifacts_only:
+        description: "Skip release - artifacts only"
+        required: true
+        default: false
+        type: boolean
+      linux:
+        description: "Skip Linux build"
+        type: boolean
+        required: true
+        default: false
+      windows:
+        description: "Skip Windows build"
+        type: boolean
+        required: true
+        default: false
+      osx:
+        description: "Skip OSX builds"
+        type: boolean
+        required: true
+        default: false
+      skip_rerun:
+        description: "Skip rerun?"
+        required: true
+        default: false
+        type: boolean
+      retries:
+        description: "Number of rerun retries"
+        required: true
+        default: "1"
+        type: choice
+        options: ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
+
+  schedule:
+    - cron: "*/5 * * * *" # every 5 minutes
+
+permissions:
+  actions: write
+  id-token: write
+  contents: write
+  attestations: write
+  packages: write
+
+env:
+  GH_TOKEN: "${{ github.TOKEN }}"
+
+jobs:
+  skip_duplicate_job:
+    runs-on: ubuntu-latest
+    outputs:
+      should_skip: ${{ steps.skip_check.outputs.should_skip }}
+    steps:
+      - id: skip_check
+        uses: fkirc/skip-duplicate-actions@v5
+        with:
+          concurrent_skipping: "always"
+          cancel_others: "false"
+          skip_after_successful_duplicate: false
+          do_not_skip: ""
+
+  scheduled_defaults:
+    if: needs.skip_duplicate_job.outputs.should_skip != 'true'
+    needs: skip_duplicate_job
+    runs-on: ubuntu-latest
+    outputs:
+      source_repo: ${{ github.event.inputs.source_repo || 'https://github.com/esnet/iperf.git' }}
+      source_branch: ${{ github.event.inputs.source_branch || 'master' }}
+      artifacts_only: ${{ github.event.inputs.artifacts_only || 'true' }}
+      skip_new_tag_check: ${{ github.event.inputs.skip_new_tag_check || 'false'  }}
+      linux_build_type: ${{ github.event.inputs.linux_build_type || 'false' }}
+      linux: ${{ github.event.inputs.linux || 'false' }}
+      windows: ${{ github.event.inputs.windows || 'false' }}
+      osx: ${{ github.event.inputs.osx || 'false' }}
+      skip_rerun: ${{ github.event.inputs.skip_rerun || 'false' }}
+      retries: ${{ github.event.inputs.retries || '1' }}
+    steps:
+      - name: Setting Outputs from inputs
+        run: printf '%b\n' "Setting Outputs from Inputs"
+
+  show_outputs:
+    if: needs.skip_duplicate_job.outputs.should_skip != 'true'
+    needs: scheduled_defaults
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set output
+        run: |
+          printf '%b\n' "# Scheduled Defaults Outputs Summary" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' ":octocat: Here is a summary of inputs set as string outputs that are used in workflows." >> $GITHUB_STEP_SUMMARY
+
+          printf '\n%b\n' "source_repo: \`${{ needs.scheduled_defaults.outputs.source_repo }}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "source_branch: \`${{ needs.scheduled_defaults.outputs.source_branch }}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "artifacts_only: \`${{ needs.scheduled_defaults.outputs.artifacts_only }}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "skip_new_tag_check: \`${{ needs.scheduled_defaults.outputs.skip_new_tag_check }}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "linux_build_type: \`${{ needs.scheduled_defaults.outputs.linux_build_type }}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "linux: \`${{ needs.scheduled_defaults.outputs.linux }}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "windows: \`${{ needs.scheduled_defaults.outputs.windows }}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "osx: \`${{ needs.scheduled_defaults.outputs.osx }}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "skip_rerun: \`${{ needs.scheduled_defaults.outputs.skip_rerun }}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "retries: \`${{ needs.scheduled_defaults.outputs.retries }}\`" >> $GITHUB_STEP_SUMMARY
+
+  iperf3_tag:
+    needs: scheduled_defaults
+    if: needs.scheduled_defaults.outputs.skip_new_tag_check == 'false' && needs.skip_duplicate_job.outputs.should_skip != 'true'
+    uses: ./.github/workflows/ci-check-for-new-release-tag.yml
+    secrets: inherit
+
+  linux_emulation:
+    needs: [scheduled_defaults, iperf3_tag]
+    if: >
+      always() &&
+      ( needs.iperf3_tag.outputs.continue_build == 'yes' || needs.scheduled_defaults.outputs.skip_new_tag_check == 'true' ) &&
+      ( needs.scheduled_defaults.outputs.linux == 'false' && needs.scheduled_defaults.outputs.linux_build_type == 'false' && needs.skip_duplicate_job.outputs.should_skip != 'true' )
+    uses: ./.github/workflows/ci-linux-emulation.yml
+    secrets: inherit
+    with:
+      source_repo: ${{ needs.scheduled_defaults.outputs.source_repo }}
+      source_branch: ${{ needs.scheduled_defaults.outputs.source_branch }}
+
+  linux_crossbuild:
+    needs: [scheduled_defaults, iperf3_tag]
+    if: >
+      always() &&
+      ( needs.iperf3_tag.outputs.continue_build == 'yes' || needs.scheduled_defaults.outputs.skip_new_tag_check == 'true' ) &&
+      ( needs.scheduled_defaults.outputs.linux == 'false' && needs.scheduled_defaults.outputs.linux_build_type == 'true' && needs.skip_duplicate_job.outputs.should_skip != 'true' )
+    uses: ./.github/workflows/ci-linux-crossbuild.yml
+    secrets: inherit
+    with:
+      source_repo: ${{ needs.scheduled_defaults.outputs.source_repo }}
+      source_branch: ${{ needs.scheduled_defaults.outputs.source_branch }}
+
+  windows:
+    needs: [scheduled_defaults, iperf3_tag]
+    if: >
+      always() &&
+      ( needs.iperf3_tag.outputs.continue_build == 'yes' || needs.scheduled_defaults.outputs.skip_new_tag_check == 'true' ) &&
+      ( needs.scheduled_defaults.outputs.windows == 'false' && needs.skip_duplicate_job.outputs.should_skip != 'true' )
+    uses: ./.github/workflows/ci-windows.yml
+    secrets: inherit
+    with:
+      source_repo: ${{ needs.scheduled_defaults.outputs.source_repo }}
+      source_branch: ${{ needs.scheduled_defaults.outputs.source_branch }}
+      artifacts_only: ${{ needs.scheduled_defaults.outputs.artifacts_only }}
+
+  osx:
+    needs: [scheduled_defaults, iperf3_tag]
+    if: >
+      always() &&
+      ( needs.iperf3_tag.outputs.continue_build == 'yes' || needs.scheduled_defaults.outputs.skip_new_tag_check == 'true' ) &&
+      ( needs.scheduled_defaults.outputs.osx == 'false' && needs.skip_duplicate_job.outputs.should_skip != 'true' )
+    strategy:
+      matrix:
+        target: [macos-13, macos-latest]
+        include:
+          - target: macos-13
+            binary_filename: amd64-osx-13
+            brew_cellar: "/usr/local/Cellar"
+            brew_install: "brew install automake"
+          - target: macos-latest
+            binary_filename: arm64-osx-14
+            brew_cellar: "/opt/homebrew/Cellar"
+            brew_install: "brew install autoconf automake libtool"
+    uses: ./.github/workflows/ci-osx.yml
+    secrets: inherit
+    with:
+      brew_cellar: ${{ matrix.brew_cellar }}
+      brew_install: ${{ matrix.brew_install }}
+      target: ${{ matrix.target }}
+      source_repo: ${{ needs.scheduled_defaults.outputs.source_repo }}
+      source_branch: ${{ needs.scheduled_defaults.outputs.source_branch }}
+      binary_filename: ${{ matrix.binary_filename }}
+
+  release:
+    needs: [scheduled_defaults, linux_emulation, linux_crossbuild, windows, osx]
+    if: >
+      always() &&
+      !contains(needs.*.result, 'failure') &&
+      needs.scheduled_defaults.outputs.artifacts_only == 'false' &&
+      needs.skip_duplicate_job.outputs.should_skip != 'true'
+    uses: ./.github/workflows/ci-release.yml
+    secrets: inherit
+    with:
+      release_tags: ${{ needs.linux_emulation.outputs.release_tags || needs.linux_crossbuild.outputs.release_tags || needs.windows.outputs.release_tags || needs.osx.outputs.release_tags }}
+      test_linux_emulation: ${{ needs.linux_emulation.result }}
+      test_linux_crossbuild: ${{ needs.linux_crossbuild.result }}
+      test_windows: ${{ needs.windows.result }}
+      test_osx: ${{ needs.osx.result }}
+
+  docker:
+    needs: [scheduled_defaults, linux_emulation, linux_crossbuild, release]
+    if: >
+      always() &&
+      ( needs.linux_emulation.result == 'success' || needs.linux_crossbuild.result == 'success' ) &&
+      !contains(needs.*.result, 'failure') &&
+      needs.scheduled_defaults.outputs.linux == 'false' &&
+      needs.scheduled_defaults.outputs.artifacts_only == 'false' &&
+      needs.skip_duplicate_job.outputs.should_skip != 'true'
+    uses: ./.github/workflows/ci-docker.yml
+    secrets: inherit
+
+  rerun_on_failure:
+    needs:
+      [
+        skip_duplicate_job,
+        scheduled_defaults,
+        show_outputs,
+        iperf3_tag,
+        linux_emulation,
+        linux_crossbuild,
+        windows,
+        osx,
+        release,
+        docker,
+      ]
+    if: >
+      failure() &&
+      ( needs.scheduled_defaults.outputs.skip_rerun == 'false' && needs.skip_duplicate_job.outputs.should_skip != 'true' )
+    name: rerun-on-failure
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trigger rerun workflow on job failures
+        run: |
+          inputs_retries="${{ needs.scheduled_defaults.outputs.retries }}"
+          gh workflow run rerun.yml -f run_id=${{ github.run_id }} -f attempts=${{ github.run_attempt }} -f retries=${inputs_retries:-1}
