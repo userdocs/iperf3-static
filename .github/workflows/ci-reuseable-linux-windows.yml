@@ -1,0 +1,180 @@
+name: ci - main reusable caller
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_repo:
+        description: "Define the git repo used for the build"
+        required: true
+        default: "https://github.com/esnet/iperf.git"
+      source_branch:
+        description: "Specify the branch or tag to build"
+        required: true
+        default: "master"
+      skip_new_tag_check:
+        description: "Bypass new tag check to force build?"
+        required: true
+        default: false
+        type: boolean
+      linux_build_type:
+        description: "Build Linux iperf3 via crossbuild"
+        required: true
+        default: false
+        type: boolean
+      artifacts_only:
+        description: "Skip release - artifacts only"
+        required: true
+        default: false
+        type: boolean
+      linux:
+        description: "Skip Linux build"
+        type: boolean
+        required: true
+        default: false
+      windows:
+        description: "Skip Windows build"
+        type: boolean
+        required: true
+        default: false
+      skip_rerun:
+        description: "Skip rerun?"
+        required: true
+        default: false
+        type: boolean
+      retries:
+        description: "Automatic rerun retries to attempt?"
+        required: true
+        default: "1"
+        type: choice
+        options: ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
+
+  schedule:
+    - cron: "*/5 * * * *" # every 5 minutes
+
+permissions:
+  actions: write
+  id-token: write
+  contents: write
+  attestations: write
+  packages: write
+
+env:
+  GH_TOKEN: "${{ github.TOKEN }}"
+
+jobs:
+  skip_duplicate_job:
+    runs-on: ubuntu-latest
+    outputs:
+      should_skip: ${{ steps.skip_check.outputs.should_skip }}
+    steps:
+      - id: skip_check
+        uses: fkirc/skip-duplicate-actions@v5
+        with:
+          concurrent_skipping: "always"
+          cancel_others: "false"
+          skip_after_successful_duplicate: false
+          do_not_skip: ""
+
+  Scheduled-Defaults:
+    if: needs.skip_duplicate_job.outputs.should_skip != 'true'
+    needs: skip_duplicate_job
+    runs-on: ubuntu-latest
+    outputs:
+      source_repo: ${{ github.event.inputs.source_repo || 'https://github.com/esnet/iperf.git' }}
+      source_branch: ${{ github.event.inputs.source_branch || 'master' }}
+      artifacts_only: ${{ github.event.inputs.artifacts_only || 'false' }}
+      skip_new_tag_check: ${{ github.event.inputs.skip_new_tag_check || 'false'  }}
+      linux_build_type: ${{ github.event.inputs.linux_build_type || 'false' }}
+      linux: ${{ github.event.inputs.linux || 'false' }}
+      windows: ${{ github.event.inputs.windows || 'false' }}
+      skip_rerun: ${{ github.event.inputs.skip_rerun || 'false' }}
+      retries: ${{ github.event.inputs.retries || '1' }}
+    steps:
+      - name: Set output
+        run: |
+          printf '%b\n' "# Input Settings Summary" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' ":octocat: Here is a summary of input values set by our reusable workflow" >> $GITHUB_STEP_SUMMARY
+
+          printf '\n%b\n' "source_repo: \`${{ github.event.inputs.source_repo || 'https://github.com/esnet/iperf.git' }}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "source_branch: \`${{ github.event.inputs.source_branch || 'master' }}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "artifacts_only: \`${{ github.event.inputs.artifacts_only || 'false' }}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "skip_new_tag_check: \`${{ github.event.inputs.skip_new_tag_check || 'false'  }}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "linux_build_type: \`${{ github.event.inputs.linux_build_type || 'false' }}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "linux: \`${{ github.event.inputs.linux || 'false' }}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "windows: \`${{ github.event.inputs.windows || 'false' }}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "skip_rerun: \`${{ github.event.inputs.skip_rerun || 'false' }}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "retries: \`${{ github.event.inputs.retries || '1' }}\`" >> $GITHUB_STEP_SUMMARY
+
+  Show-Ouputs:
+    if: needs.skip_duplicate_job.outputs.should_skip != 'true'
+    needs: Scheduled-Defaults
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set output
+        run: |
+          printf '%b\n' "# Scheduled Defaults Outputs Summary" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' ":octocat: Here is a summary of inputs set as string outputs that are used in workflows." >> $GITHUB_STEP_SUMMARY
+
+          printf '\n%b\n' "source_repo: \`${{ needs.Scheduled-Defaults.outputs.source_repo }}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "source_branch: \`${{ needs.Scheduled-Defaults.outputs.source_branch }}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "artifacts_only: \`${{ needs.Scheduled-Defaults.outputs.artifacts_only }}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "skip_new_tag_check: \`${{ needs.Scheduled-Defaults.outputs.skip_new_tag_check }}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "linux_build_type: \`${{ needs.Scheduled-Defaults.outputs.linux_build_type }}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "linux: \`${{ needs.Scheduled-Defaults.outputs.linux }}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "windows: \`${{ needs.Scheduled-Defaults.outputs.windows }}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "skip_rerun: \`${{ needs.Scheduled-Defaults.outputs.skip_rerun }}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "retries: \`${{ needs.Scheduled-Defaults.outputs.retries }}\`" >> $GITHUB_STEP_SUMMARY
+
+  Iperf3-Tag:
+    needs: Scheduled-Defaults
+    if: needs.Scheduled-Defaults.outputs.skip_new_tag_check == 'false' && needs.skip_duplicate_job.outputs.should_skip != 'true'
+    uses: ./.github/workflows/ci-check-for-new-release-tag.yml
+    secrets: inherit
+
+  Linux-Emulation:
+    needs: [Scheduled-Defaults, Iperf3-Tag]
+    if: always() && ( needs.Iperf3-Tag.outputs.continue_build == 'yes' || needs.Scheduled-Defaults.outputs.skip_new_tag_check == 'true' ) && ( needs.Scheduled-Defaults.outputs.linux == 'false' && needs.Scheduled-Defaults.outputs.linux_build_type == 'false' && needs.skip_duplicate_job.outputs.should_skip != 'true' )
+    uses: ./.github/workflows/ci-linux-emulation.yml
+    secrets: inherit
+    with:
+      source_repo: ${{ needs.Scheduled-Defaults.outputs.source_repo }}
+      source_branch: ${{ needs.Scheduled-Defaults.outputs.source_branch }}
+      artifacts_only: ${{ needs.Scheduled-Defaults.outputs.artifacts_only }}
+
+  Linux-Crossbuild:
+    needs: [Scheduled-Defaults, Iperf3-Tag]
+    if: always() && ( needs.Iperf3-Tag.outputs.continue_build == 'yes' || needs.Scheduled-Defaults.outputs.skip_new_tag_check == 'true' ) && ( needs.Scheduled-Defaults.outputs.linux == 'false' && needs.Scheduled-Defaults.outputs.linux_build_type == 'true' && needs.skip_duplicate_job.outputs.should_skip != 'true' )
+    uses: ./.github/workflows/ci-linux-crossbuild.yml
+    secrets: inherit
+    with:
+      source_repo: ${{ needs.Scheduled-Defaults.outputs.source_repo }}
+      source_branch: ${{ needs.Scheduled-Defaults.outputs.source_branch }}
+      artifacts_only: ${{ needs.Scheduled-Defaults.outputs.artifacts_only }}
+
+  Docker:
+    needs: [Iperf3-Tag, Linux-Emulation, Linux-Crossbuild]
+    if: always() && ( needs.Linux-Emulation.result == 'success' || needs.Linux-Crossbuild.result == 'success' || needs.Scheduled-Defaults.outputs.skip_new_tag_check == 'true' ) && ( needs.Iperf3-Tag.outputs.continue_build == 'yes' || needs.Scheduled-Defaults.outputs.skip_new_tag_check == 'true' ) && ( needs.Scheduled-Defaults.outputs.linux == 'false' && needs.Scheduled-Defaults.outputs.artifacts_only == 'false' && needs.skip_duplicate_job.outputs.should_skip != 'true' )
+    uses: ./.github/workflows/ci-docker.yml
+    secrets: inherit
+
+  Windows:
+    needs: [Iperf3-Tag]
+    if: always() && ( needs.Iperf3-Tag.outputs.continue_build == 'yes' || needs.Scheduled-Defaults.outputs.skip_new_tag_check == 'true' ) && ( needs.Scheduled-Defaults.outputs.windows == 'false' && needs.skip_duplicate_job.outputs.should_skip != 'true' )
+    uses: ./.github/workflows/ci-windows.yml
+    secrets: inherit
+    with:
+      source_repo: ${{ needs.Scheduled-Defaults.outputs.source_repo }}
+      source_branch: ${{ needs.Scheduled-Defaults.outputs.source_branch }}
+      artifacts_only: ${{ needs.Scheduled-Defaults.outputs.artifacts_only }}
+
+  rerun-on-failure:
+    needs: [Iperf3-Tag, Linux-Emulation, Linux-Crossbuild, Docker, Windows]
+    if: always() && failure() && ( needs.Scheduled-Defaults.outputs.skip_rerun == 'false' && needs.skip_duplicate_job.outputs.should_skip != 'true' )
+    name: rerun-on-failure
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trigger rerun workflow on job failures
+        run: |
+          inputs_retries="${{ needs.Scheduled-Defaults.outputs.retries }}"
+          gh workflow run rerun.yml -f run_id=${{ github.run_id }} -f attempts=${{ github.run_attempt }} -f retries=${inputs_retries:-1}

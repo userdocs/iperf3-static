@@ -7,16 +7,17 @@
 
 ## Available architectures
 
-| Alpine Arch | Docker platform arch |    ghcr.io image    |
-| :---------: | :------------------: | :-----------------: |
-|    armhf    |     linux/arm/v6     | arm32v6/alpine:edge |
-|    armv7    |     linux/arm/v7     | arm32v7/alpine:edge |
-|   aarch64   |     linux/arm64      | arm64v8/alpine:edge |
-|   ppc64le   |    linux/ppc64le     | ppc64le/alpine:edge |
-|    s390x    |     linux/s390x      |  s390x/alpine:edge  |
-|   riscv64   |    linux/riscv64     | riscv64/alpine:edge |
-|     x86     |      linux/i386      |  i386/alpine:edge   |
-|   x86_64    |     linux/amd64      |  amd64/alpine:edge  |
+Linux:
+
+- Arch: `amd64` `arm32v6` `arm32v7` `arm64v8` `i386` `ppc64le` `riscv64` `s390x`
+- Docker: yes
+- Static binaries: yes
+
+Windows: `amd64`
+
+- Arch: `amd64`
+- Docker: no
+- Static binaries: yes
 
 ## Download - Static Binaries
 
@@ -46,17 +47,36 @@ To used the image dynamically
 docker run -it ghcr.io/userdocs/iperf3-static:latest iperf3 --version
 ```
 
-### Alpine
+## Alpine multiarch info
 
-Builds are created using https://github.com/multiarch/qemu-user-static and arch specific docker images detailed in the table below.
+<details closed>
+<summary>Expand for details</summary>
 
-### Windows
+| Alpine Arch | Docker platform arch |         Source of Build Dockers         |    ghcr.io image    |
+| :---------: | :------------------: | :-------------------------------------: | :-----------------: |
+|    armhf    |     linux/arm/v6     | https://hub.docker.com/r/arm32v6/alpine | arm32v6/alpine:edge |
+|    armv7    |     linux/arm/v7     | https://hub.docker.com/r/arm32v7/alpine | arm32v7/alpine:edge |
+|   aarch64   |     linux/arm64      | https://hub.docker.com/r/arm64v8/alpine | arm64v8/alpine:edge |
+|   ppc64le   |    linux/ppc64le     | https://hub.docker.com/r/ppc64le/alpine | ppc64le/alpine:edge |
+|    s390x    |     linux/s390x      |  https://hub.docker.com/r/s390x/alpine  |  s390x/alpine:edge  |
+|   riscv64   |    linux/riscv64     | https://hub.docker.com/r/riscv64/alpine | riscv64/alpine:edge |
+|     x86     |      linux/i386      |  https://hub.docker.com/r/i386/alpine   |  i386/alpine:edge   |
+|   x86_64    |     linux/amd64      |  https://hub.docker.com/r/amd64/alpine  |  amd64/alpine:edge  |
+
+</details>
+
+## Windows x86_64 info
+
+<details closed>
+<summary>Expand for details</summary>
 
 Static Cygwin builds created via cygwin64 using this custom installer
 
 https://github.com/userdocs/iperf3-static/blob/master/cygwin-installer.cmd
 
-### Generic Build dependencies
+</details>
+
+## Generic Build dependencies
 
 <details closed>
 <summary>Expand for details</summary>
@@ -273,14 +293,7 @@ All binaries and dlls are scanned by virus total and the results uploaded using 
 
 https://github.com/crazy-max/ghaction-virustotal
 
-The results url is uploaded to the release assets in a text file, for example.
-
-```
-iperf3-amd64-virustotal-analysis.txt
-```
-
-> [!NOTE]
-> The sha256 checksum from the github attestation will match the one in the virus total report.
+The results url is uploaded to the release body and you can see them here https://github.com/userdocs/iperf3-static/releases/latest
 
 </details>
 
@@ -294,5 +307,22 @@ Other contributions have helped inspire the creation of a GitHub action for a Wi
 [www.neowin.net](https://www.neowin.net/forum/topic/1234695-iperf-313-windows-build) via [budman](https://www.neowin.net/forum/profile/14624-budman/)
 
 https://github.com/ar51an/iperf3-win-builds via [cryptanalyst](https://www.neowin.net/forum/profile/170754-cryptanalyst/)
+
+</details>
+
+## Forking and using this repo
+
+<details closed>
+<summary>Expand for details</summary>
+
+Step 1: Fork the repo: https://github.com/userdocs/iperf3-static/fork
+
+Step 2: Under the repo `/settings/secrets/actions` you will need to set a the `VT_API_KEY` using your
+
+You can find it here if you have created an account: https://www.virustotal.com/gui/my-apikey
+
+Step 3: Under the Actions tab, enable workflows. The `check_new_release.yml` defaults to a scheduled check but can be run manually.
+
+https://github.com/userdocs/iperf3-static/blob/0571ce60cba18d2b67303b71d31009f83bae36c8/.github/workflows/check_new_release.yml#L11-L12
 
 </details>
