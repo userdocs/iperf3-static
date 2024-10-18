@@ -359,3 +359,13 @@ Step 3: Under the Actions tab, enable workflows. The `check_new_release.yml` def
 https://github.com/userdocs/iperf3-static/blob/0571ce60cba18d2b67303b71d31009f83bae36c8/.github/workflows/check_new_release.yml#L11-L12
 
 </details>
+
+## Test Servers
+
+https://github.com/R0GGER/public-iperf3-servers?tab=readme-ov-file#servers-per-continent
+
+Linux one liner for an example output of `./iperf3 -c speedtest.ip-projects.de` for a random Europe server
+
+```shell
+./$(curl -sL https://db.iperf3serverlist.net/api/v1/db/public/shared-view/b111407c-43c4-48af-a828-301b698064a3/rows/export/csv | awk -F, 'NR>1 { print $1 }' | shuf -n1)
+```
