@@ -1,0 +1,130 @@
+name: ci - linux binary cross build
+
+on:
+  workflow_call:
+    outputs:
+      release_tags:
+        value: ${{ jobs.build.outputs.release_tags }}
+    inputs:
+      source_repo:
+        type: string
+        required: true
+      source_branch:
+        type: string
+        required: true
+env:
+  GH_TOKEN: "${{ github.TOKEN }}"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      release_tags: ${{ steps.release_tags.outputs.release_tag }}
+    strategy:
+      fail-fast: false
+      matrix:
+        name: [iperf3]
+        os_id: [alpine]
+        os_version_id: [edge]
+        arch: [x86, x86_64, armhf, armv7, aarch64, ppc64le, riscv64, s390x]
+        include:
+          - arch: x86
+            qbt-musl-cross-make: "i686-linux-musl"
+            release_name: i386
+          - arch: x86_64
+            qbt-musl-cross-make: "x86_64-linux-musl"
+            release_name: amd64
+          - arch: armhf
+            qbt-musl-cross-make: "armv6-linux-musleabihf"
+            release_name: arm32v6
+          - arch: armv7
+            qbt-musl-cross-make: "armv6-linux-musleabihf"
+            release_name: arm32v7
+          - arch: armv7
+            qbt-musl-cross-make: "armv7l-linux-musleabihf"
+          - arch: aarch64
+            qbt-musl-cross-make: "aarch64-linux-musl"
+            release_name: arm64v8
+          - arch: ppc64le
+            qbt-musl-cross-make: "powerpc64le-linux-musl"
+            release_name: ppc64le
+          - arch: riscv64
+            qbt-musl-cross-make: "riscv64-linux-musl"
+            release_name: riscv64
+          - arch: s390x
+            qbt-musl-cross-make: "s390x-linux-musl"
+            release_name: s390x
+
+    name: ${{ matrix.name }} ${{ matrix.os_id }}:${{ matrix.os_version_id }} ${{ matrix.arch }}
+
+    env:
+      CDN: http://dl-cdn.alpinelinux.org/alpine/edge/main/
+      CXXFLAGS: "--static -static"
+      CPPFLAGS: "--static -static"
+      LDFLAGS: "--static -static"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Host - phased updates
+        run: printf '%s\n' 'APT::Get::Always-Include-Phased-Updates "false";' | sudo tee /etc/apt/apt.conf.d/99-phased-updates
+
+      - name: Host - update
+        run: sudo apt-get update
+
+      # - name: Host - upgrade
+      #   run: sudo apt-get -y upgrade
+
+      - name: Host - set up qemu-user-static binfmt-support
+        run: sudo apt install libpipeline1 qemu-user-static binfmt-support
+
+      - name: Create docker multiarch ${{ matrix.platform }} container
+        run: docker run --name multiarch -it -d -w /root -e CXXFLAGS="${{ env.CXXFLAGS }}" -e CPPFLAGS="${{ env.CPPFLAGS }}" -e LDFLAGS="${{ env.LDFLAGS }}" -v ${{ github.workspace }}:/root ghcr.io/userdocs/qbt-musl-cross-make:${{ matrix.qbt-musl-cross-make }}
+
+      - name: Run apk update
+        run: docker exec multiarch apk update --repository=${{ env.CDN }}
+
+      - name: Run apk upgrade
+        run: docker exec multiarch apk upgrade --repository=${{ env.CDN }}
+
+      - name: mkdir -p /root/local
+        run: docker exec multiarch /bin/bash /root/ci-linux-crossbuild.sh ${{ inputs.source_repo }} ${{ inputs.source_branch }} ${{ matrix.qbt-musl-cross-make }} ${{ matrix.arch }}
+
+      - name: Rename ${{ matrix.name }} to ${{ matrix.name }}-${{ matrix.release_name }}
+        run: docker exec multiarch mv -f /root/local/bin/${{ matrix.name }} /root/${{ matrix.name }}-${{ matrix.release_name }}
+
+      - name: Create path to binary env
+        run: printf '%s\n' "binary_path=${{ github.workspace }}/${{ matrix.name }}-${{ matrix.release_name }}" >> $GITHUB_ENV
+
+      - name: VirusTotal Scan
+        id: virustotal
+        uses: crazy-max/ghaction-virustotal@v4
+        with:
+          vt_api_key: ${{ secrets.VT_API_KEY }}
+          files: ${{ env.binary_path }}
+
+      - name: sha256sum
+        run: |
+          printf '%s' https://www.virustotal.com/gui/file/$(sha256sum ${{ env.binary_path }} | awk '{print $1}') > ${{ matrix.name }}-${{ matrix.release_name }}.url
+          cat ${{ matrix.name }}-${{ matrix.release_name }}.url
+
+      - name: Create tag env
+        run: printf '%s\n' "release_tag=$(sed -rn 's|(.*)\[(.*)],\[https://github.com/esnet/iperf],(.*)|\2|p' ${{ matrix.name }}/configure.ac)" >> $GITHUB_ENV
+
+      - name: Set tag env to output
+        id: release_tags
+        run: printf '%s\n' "release_tag=${{ env.release_tag }}" >> "$GITHUB_OUTPUT"
+
+      - name: Generate artifact attestation
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: ${{ env.binary_path }}
+
+      - name: "Create artifact"
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}-${{ matrix.release_name }}
+          path: |
+            ${{ env.binary_path }}
+            ${{ matrix.name }}-${{ matrix.release_name }}.url

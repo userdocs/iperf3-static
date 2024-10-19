@@ -1,0 +1,91 @@
+name: test iperf3 release binaries for windows and osx
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-osx-amd64:
+    runs-on: macos-13
+
+    steps:
+      - name: brew install
+        run: brew install coreutils
+
+      - name: test iperf3 version
+        run: |
+          wget -O ~/iperf3 "https://github.com/${{ github.repository }}/releases/latest/download/iperf3-amd64-osx-13"
+          chmod +x ~/iperf3
+
+          printf '\n%b\n\n' "🟦"
+          file ~/iperf3
+
+          printf '\n%b\n\n' "🟦"
+          otool -L ~/iperf3
+
+          printf '\n%b\n\n' "🟦"
+          ~/iperf3 --version
+
+      - name: test iperf3 servers
+        run: |
+          ~/$(wget -qO- https://db.iperf3serverlist.net/api/v1/db/public/shared-view/b111407c-43c4-48af-a828-301b698064a3/rows/export/csv | awk -F, 'NR>1 { print $1 }' | shuf -n1)
+
+  test-osx-arm64:
+    runs-on: macos-latest
+
+    steps:
+      - name: brew install
+        run: brew install coreutils
+
+      - name: test iperf3 version
+        run: |
+          wget -O ~/iperf3 "https://github.com/${{ github.repository }}/releases/latest/download/iperf3-arm64-osx-14"
+          chmod +x ~/iperf3
+
+          printf '\n%b\n\n' "🟦"
+          file ~/iperf3
+
+          printf '\n%b\n\n' "🟦"
+          otool -L ~/iperf3
+
+          printf '\n%b\n\n' "🟦"
+          ~/iperf3 --version
+
+      - name: test iperf3 servers
+        run: |
+          ~/$(wget -qO- https://db.iperf3serverlist.net/api/v1/db/public/shared-view/b111407c-43c4-48af-a828-301b698064a3/rows/export/csv | awk -F, 'NR>1 { print $1 }' | shuf -n1)
+
+  test-windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: test iperf3 version
+        run: |
+          curl -sL "https://github.com/${{ github.repository }}/releases/latest/download/iperf3-amd64-win.zip" -o iperf3.zip
+          unzip iperf3.zip
+          ls -la
+          chmod +x iperf3.exe
+          ./iperf3.exe --version
+
+      - name: test iperf3 servers
+        run: ./$(curl -sL https://db.iperf3serverlist.net/api/v1/db/public/shared-view/b111407c-43c4-48af-a828-301b698064a3/rows/export/csv | awk -F, 'NR>1 { print $1 }' | shuf -n1)
+
+  test-windows-openssl:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Download iperf3
+        run: |
+          curl -sL "https://github.com/${{ github.repository }}/releases/latest/download/iperf3-amd64-win-openssl.zip" -o iperf3.zip
+          unzip iperf3.zip
+          ls -la
+          chmod +x iperf3.exe
+          ./iperf3.exe --version
+
+      - name: test iperf3 servers
+        run: ./$(curl -sL https://db.iperf3serverlist.net/api/v1/db/public/shared-view/b111407c-43c4-48af-a828-301b698064a3/rows/export/csv | awk -F, 'NR>1 { print $1 }' | shuf -n1)

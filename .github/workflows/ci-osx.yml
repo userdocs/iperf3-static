@@ -1,0 +1,131 @@
+name: ci - osx
+
+on:
+  workflow_call:
+    outputs:
+      release_tags:
+        value: ${{ jobs.build.outputs.release_tags }}
+    inputs:
+      source_repo:
+        type: string
+        required: true
+      source_branch:
+        type: string
+        required: true
+      brew_cellar:
+        type: string
+        required: true
+      brew_install:
+        type: string
+        required: true
+      target:
+        type: string
+        required: true
+      binary_filename:
+        type: string
+        required: true
+
+env:
+  GH_TOKEN: "${{ github.TOKEN }}"
+
+jobs:
+  build:
+    runs-on: ${{ inputs.target }}
+    outputs:
+      release_tags: ${{ steps.release_tags.outputs.release_tag }}
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v4
+
+      - name: Install packages
+        run: |
+          brew update || brew update-reset
+          ${{ inputs.brew_install }}
+
+      - name: Check openssl
+        run: ls -la ${{ inputs.brew_cellar }}/openssl@3/*/lib
+
+      - name: Copy Openssl Static Libraries to openssl_libs
+        run: |
+          mkdir -p ${{ github.workspace }}/openssl_libs
+          cp -fv ${{ inputs.brew_cellar }}/openssl@3/*/lib/libcrypto.a ${{ github.workspace }}/openssl_libs/
+          cp -fv ${{ inputs.brew_cellar }}/openssl@3/*/lib/libssl.a ${{ github.workspace }}/openssl_libs/
+
+      - name: Check openssl_libs
+        run: ls -la openssl_libs
+
+      - name: Clone iperf3 repository
+        run: git clone --no-tags --single-branch --branch ${{ inputs.source_branch }} --shallow-submodules --recurse-submodule --depth 1 ${{ inputs.source_repo }} iperf3
+
+      - name: Bootstrap
+        working-directory: iperf3
+        run: ./bootstrap.sh
+
+      - name: Set CC
+        run: printf '%s\n' "LDFLAGS=-L${{ github.workspace }}/openssl_libs" >> "$GITHUB_ENV"
+
+      - name: Configure
+        working-directory: iperf3
+        run: ./configure --enable-shared=no --disable-silent-rules --disable-profiling --prefix=${{ github.workspace }}/build
+
+      - name: Make
+        working-directory: iperf3
+        run: make -j"$(sysctl -n hw.logicalcpu)"
+
+      - name: Make install
+        working-directory: iperf3
+        run: make install
+
+      - name: Test iperf3 build
+        run: |
+          printf '\n%b\n\n' "🟦"
+          ${{ github.workspace }}/build/bin/iperf3 --version
+          printf '\n%b\n\n' "🟦"
+          file ${{ github.workspace }}/build/bin/iperf3
+          printf '\n%b\n\n' "🟦"
+          otool -L ${{ github.workspace }}/build/bin/iperf3
+
+      - name: Process iperf3 build
+        run: mv -f ${{ github.workspace }}/build/bin/iperf3 ${{ github.workspace }}/iperf3-${{ inputs.binary_filename }}
+
+      - name: Create path to binary env
+        run: printf '%s\n' "binary_path=${{ github.workspace }}/iperf3-${{ inputs.binary_filename }}" >> $GITHUB_ENV
+
+      - name: VirusTotal Scan
+        id: virustotal
+        uses: crazy-max/ghaction-virustotal@v4
+        with:
+          vt_api_key: ${{ secrets.VT_API_KEY }}
+          files: ${{ env.binary_path }}
+
+      - name: sha256sum
+        run: |
+          printf '%s' https://www.virustotal.com/gui/file/$(shasum -a 256 ${{ env.binary_path }} | awk '{print $1}') > iperf3-${{ inputs.binary_filename }}.url
+          cat iperf3-${{ inputs.binary_filename }}.url
+
+      - name: Create tag env
+        run: printf '%s\n' "release_tag=$(sed -rn 's|(.*)\[(.*)],\[https://github.com/esnet/iperf],(.*)|\2|p' iperf3/configure.ac)" >> $GITHUB_ENV
+
+      - name: Set tag env to output
+        id: release_tags
+        run: printf '%s\n' "release_tag=${{ env.release_tag }}" >> "$GITHUB_OUTPUT"
+
+      - name: Generate artifact attestation
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: ${{ env.binary_path }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: iperf3-${{ inputs.binary_filename }}
+          path: |
+            ${{ env.binary_path }}
+            iperf3-${{ inputs.binary_filename }}.url
+
+      - name: Upload artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iperf3-${{ inputs.binary_filename }}-config.log
+          path: ${{ github.workspace }}/iperf3/config.log

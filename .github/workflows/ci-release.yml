@@ -1,0 +1,79 @@
+name: ci - release
+
+on:
+  workflow_call:
+    inputs:
+      release_tags:
+        type: string
+      test_linux_emulation:
+        type: string
+      test_linux_crossbuild:
+        type: string
+      test_windows:
+        type: string
+      test_osx:
+        type: string
+
+env:
+  GH_TOKEN: "${{ github.TOKEN }}"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Summary - needs results
+        run: |
+          printf '%s\n\n' "## Summary - needs results"
+          printf '%s\n\n' "release_tags: \`${{ inputs.release_tags }}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%s\n' "test_linux_emulation: \`${{ inputs.test_linux_emulation }}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%s\n' "test_linux_crossbuild: \`${{ inputs.test_linux_crossbuild }}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%s\n' "test_windows: \`${{ inputs.test_windows }}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%s\n' "test_osx: \`${{ inputs.test_osx }}\`" >> $GITHUB_STEP_SUMMARY
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: "release-artifacts"
+          pattern: iperf3-*
+          merge-multiple: true
+
+      - name: Virustotal scan results
+        run: |
+          pushd release-artifacts || exit 1
+
+          for virus_total_urls in iperf3-*\.url; do
+            dependency_version+=("${virus_total_urls}")
+          done
+
+          readarray -t release_sorted < <(printf '%s\n' "${dependency_version[@]}" | sort)
+
+          if command_output="$(gh release view "${{ inputs.release_tags }}" --repo "${{ github.repository }}" --json body -q .body 2>&1)"; then
+            if [[ -n "${command_output}" ]]; then
+              sed '/<!-- split body -->/ {q}' ${{ github.workspace }}/ci-release-body.md > ci-release-body.md
+              printf '%s\n' "$command_output" | sed -n '/<!-- split urls -->/,$p' >> ci-release-body.md
+            else
+              cp -f ${{ github.workspace }}/ci-release-body.md ci-release-body.md
+            fi
+          else
+            cp -f ${{ github.workspace }}/ci-release-body.md ci-release-body.md
+          fi
+
+          for filenames in "${release_sorted[@]}"; do
+            virustotal_url="$(head -1 "${filenames}" | tr -d '\n' | tr -d '\r' | tr -d '\r\n')"
+            sed -i -r 's|(\['${filenames//\.url/}'\])\((.*)\)|\1('${virustotal_url}')|' ci-release-body.md
+          done
+
+      - name: "Publish release ${{ inputs.release_tags }}"
+        uses: ncipollo/release-action@v1
+        with:
+          prerelease: false
+          artifacts: release-artifacts/iperf3-*[!\.url]
+          replacesArtifacts: true
+          tag: ${{ inputs.release_tags }}
+          name: iperf3 ${{ inputs.release_tags }}
+          allowUpdates: true
+          bodyFile: release-artifacts/ci-release-body.md
+          token: ${{ github.token }}

@@ -1,0 +1,104 @@
+name: ci - windows binary build
+
+on:
+  workflow_call:
+    outputs:
+      release_tags:
+        value: ${{ jobs.build.outputs.release_tags }}
+    inputs:
+      source_repo:
+        type: string
+        required: true
+      source_branch:
+        type: string
+        required: true
+      artifacts_only:
+        type: string
+        required: true
+
+env:
+  GH_TOKEN: "${{ github.TOKEN }}"
+
+jobs:
+  build:
+    runs-on: windows-latest
+    outputs:
+      release_tags: ${{ steps.release_tags.outputs.release_tag }}
+    strategy:
+      fail-fast: false
+      matrix:
+        name: [iperf3]
+        build: [basic, openssl]
+        arch: [amd64]
+        include:
+          - build: "basic"
+            filename: ""
+            openssl: "no"
+          - build: "openssl"
+            filename: "-openssl"
+            openssl: "yes"
+
+    name: ${{ matrix.name }}-${{ matrix.arch }}-win${{ matrix.filename }}.zip
+
+    env:
+      cygwin_path: ""
+
+    steps:
+      - run: git config --global core.autocrlf input
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install ci-cygwin-installer.cmd
+        run: .\ci-cygwin-installer.cmd
+
+      - name: Build static
+        run: .\cygwin\bin\bash.exe -l ci-windows-cygwin-build.sh "${{ matrix.openssl }}" "${{ env.cygwin_path }}" "${{ inputs.source_repo }}" "${{ inputs.source_branch }}"
+
+      - name: VirusTotal Scan
+        id: virustotal
+        uses: crazy-max/ghaction-virustotal@v4
+        with:
+          vt_api_key: ${{ secrets.VT_API_KEY }}
+          files: |
+            ${{ matrix.name }}/bin/iperf3.exe
+            ${{ matrix.name }}/bin/cygwin1.dll
+
+      - name: sha256sum
+        run: |
+          printf '%s' https://www.virustotal.com/gui/file/$(sha256sum ${{ matrix.name }}/bin/iperf3.exe | awk '{print $1}') > ${{ matrix.name }}-${{ matrix.arch }}-win${{ matrix.filename }}.url
+          cat ${{ matrix.name }}-${{ matrix.arch }}-win${{ matrix.filename }}.url
+
+      - name: Archive build
+        run: Compress-Archive -Path "${{ matrix.name }}/bin/*" -DestinationPath "${{ matrix.name }}-${{ matrix.arch }}-win${{ matrix.filename }}.zip"
+
+      - name: Generate artifact attestation
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: |
+            ${{ matrix.name }}-${{ matrix.arch }}-win${{ matrix.filename }}.zip
+            ${{ matrix.name }}/bin/iperf3.exe
+            ${{ matrix.name }}/bin/cygwin1.dll
+
+      - name: Create tag env
+        run: printf '%s\n' "release_tag=$(Get-Content -Path iperf3_version)" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Set tag env to output
+        id: release_tags
+        run: printf '%s\n' "release_tag=${{ env.release_tag }}" >> $env:GITHUB_OUTPUT
+
+      - name: "Release - Create artifacts"
+        if: inputs.artifacts_only == 'false'
+        uses: actions/upload-artifact@v4
+        with:
+          name: "${{ matrix.name }}-amd64-win${{ matrix.filename }}"
+          path: |
+            ${{ matrix.name }}-${{ matrix.arch }}-win${{ matrix.filename }}.zip
+            ${{ matrix.name }}-${{ matrix.arch }}-win${{ matrix.filename }}.url
+
+      - name: "Dev - Create artifacts"
+        if: inputs.artifacts_only == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: "${{ matrix.name }}-amd64-win${{ matrix.filename }}"
+          path: "${{ matrix.name }}"
