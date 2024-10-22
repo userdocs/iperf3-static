@@ -87,7 +87,7 @@ jobs:
     outputs:
       source_repo: ${{ github.event.inputs.source_repo || 'https://github.com/esnet/iperf.git' }}
       source_branch: ${{ github.event.inputs.source_branch || 'master' }}
-      artifacts_only: ${{ github.event.inputs.artifacts_only || 'true' }}
+      artifacts_only: ${{ github.event.inputs.artifacts_only || 'false' }}
       skip_new_tag_check: ${{ github.event.inputs.skip_new_tag_check || 'false'  }}
       linux_build_type: ${{ github.event.inputs.linux_build_type || 'false' }}
       linux: ${{ github.event.inputs.linux || 'false' }}
@@ -97,7 +97,15 @@ jobs:
       retries: ${{ github.event.inputs.retries || '1' }}
     steps:
       - name: Setting Outputs from inputs
-        run: printf '%b\n' "Setting Outputs from Inputs"
+        run: |
+          printf '%b\n\n' "Setting Outputs from Inputs"
+
+          printf '%b\n\n' "Checking required secrets are set" >> $GITHUB_STEP_SUMMARY
+
+          if [[ -z "${{ secrets.VT_API_KEY }}" ]]; then
+            printf '%b\n\n' "VT_API_KEY is not set. Exiting..." >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
 
   show_outputs:
     if: needs.skip_duplicate_job.outputs.should_skip != 'true'
@@ -195,6 +203,7 @@ jobs:
     needs: [scheduled_defaults, linux_emulation, linux_crossbuild, windows, osx]
     if: >
       always() &&
+      ( needs.linux_emulation.result == 'success' || needs.linux_crossbuild.result == 'success' || needs.windows.result == 'success' || needs.osx.result == 'success' ) &&
       !contains(needs.*.result, 'failure') &&
       needs.scheduled_defaults.outputs.artifacts_only == 'false' &&
       needs.skip_duplicate_job.outputs.should_skip != 'true'
