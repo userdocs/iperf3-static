@@ -73,7 +73,7 @@ jobs:
         run: Compress-Archive -Path "${{ matrix.name }}/bin/*" -DestinationPath "${{ matrix.name }}-${{ matrix.arch }}-win${{ matrix.filename }}.zip"
 
       - name: Generate artifact attestation
-        uses: actions/attest-build-provenance@v1
+        uses: actions/attest-build-provenance@v2
         with:
           subject-path: |
             ${{ matrix.name }}-${{ matrix.arch }}-win${{ matrix.filename }}.zip
