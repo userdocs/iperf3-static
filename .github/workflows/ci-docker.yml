@@ -4,14 +4,14 @@ on:
   workflow_call:
 
 env:
-  REGISTRY_IMAGE_GHCR: ghcr.io/${{ github.repository }}
-  REGISTRY_IMAGE_DOCKERHUB: ${{ github.repository }}
+  DOCKERHUB_REPO: ${{ github.repository }}
+  GHCR_REPO: ghcr.io/${{ github.repository }}
   SET_IMAGE_TAG: latest
   GH_TOKEN: ${{ github.token }}
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     outputs:
       latest_tag: ${{ steps.gh_latest_tag.outputs.latest_tag }}
     strategy:
@@ -37,9 +37,10 @@ jobs:
             platform: linux/s390x
 
     steps:
-      # Checkout the code
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Fetch latest GitHub tag
         id: gh_latest_tag
@@ -48,127 +49,106 @@ jobs:
           printf '%s\n' "latest_tag=${latest_tag//+/-dev}" >> "$GITHUB_ENV"
           printf '%s\n' "latest_tag=${latest_tag//+/-dev}" >> "$GITHUB_OUTPUT"
 
-      # Prepare environment variables
       - name: Prepare
         run: |
           platform=${{ matrix.platform }}
-          printf '%s\n' "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
+          printf '%s\n' "matrix_platform_hypens=${platform//\//-}" >> $GITHUB_ENV
 
-      # Generate Docker metadata
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: |
-            ${{ env.REGISTRY_IMAGE_GHCR }}
-            ${{ env.REGISTRY_IMAGE_DOCKERHUB }}
+          images: ${{ env.GHCR_REPO }}
 
-      # Set up QEMU for multiarch builds
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      # Set up Docker Buildx
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      # Cache Docker layers
-      - name: Cache Docker layers
-        uses: actions/cache@v4
-        with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ matrix.arch }}-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-buildx-${{ matrix.arch }}-
-
-      # Login to GitHub Container Registry
-      - name: Login to GitHub Container Registry
+      - name: Login to GHCR
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
-          username: ${{ github.actor }}
+          username: ${{ github.repository_owner }}
           password: ${{ github.token }}
 
-      # Build and push Docker images
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          cache-binary: false
+
       - name: Build and push by digest
         id: build
         uses: docker/build-push-action@v6
         with:
           context: .
           platforms: ${{ matrix.platform }}
+          provenance: false
           push: true
-          tags: |
-            ${{ env.REGISTRY_IMAGE_GHCR }}:${{ steps.meta.outputs.version }}
+          tags: ${{ env.GHCR_REPO }}:${{ steps.meta.outputs.version }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache
+          no-cache: true
           build-args: |
-            PLATFORM=linux/${{ matrix.platform }}
             ARCH=${{ matrix.arch }}
             REPO=${{ github.repository }}
 
-      # Export digest
       - name: Export digest
+        env:
+          digest: ${{ steps.build.outputs.digest }}
         run: |
-          mkdir -p /tmp/digests
-          digest="${{ steps.build.outputs.digest }}"
-          touch "/tmp/digests/${digest#sha256:}"
+          mkdir -p ${{ runner.temp }}/digests
+          digest="${digest}"
+          touch "${{ runner.temp }}/digests/${digest#sha256:}"
 
-      # Upload digest
       - name: Upload digest
         uses: actions/upload-artifact@v4
         with:
-          name: digests-${{ env.PLATFORM_PAIR }}
-          path: /tmp/digests/*
+          name: digests-${{ env.matrix_platform_hypens }}
+          path: ${{ runner.temp }}/digests/*
           if-no-files-found: error
-          retention-days: 1
 
   merge:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     needs: build
+    env:
+      latest_tag: ${{ needs.build.outputs.latest_tag }}
     steps:
-      # Download digests
       - name: Download digests
         uses: actions/download-artifact@v4
         with:
-          path: /tmp/digests
+          path: ${{ runner.temp }}/digests
           pattern: digests-*
           merge-multiple: true
 
-      # Set up Docker Buildx
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ github.token }}
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+        with:
+          cache-binary: false
 
-      # Generate Docker metadata
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY_IMAGE_GHCR }}
+          images: ${{ env.GHCR_REPO }}
 
-      # Login to GitHub Container Registry
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ github.token }}
-
-      # Create and push manifest lists for ${{ env.SET_IMAGE_TAG }} tag
-      - name: Create manifest list and push ${{ env.SET_IMAGE_TAG }}
-        working-directory: /tmp/digests
+      - name: Create manifest list and push latest
+        working-directory: ${{ runner.temp }}/digests
         run: |
-          ghcr_digests=$(for digest in *; do printf '${{ env.REGISTRY_IMAGE_GHCR }}@sha256:%s ' "$digest"; done)
-          docker buildx imagetools create -t ${{ env.REGISTRY_IMAGE_GHCR }}:${{ env.SET_IMAGE_TAG }} $ghcr_digests
+          ghcr_digests=$(for digest in *; do printf '%s@sha256:%s ' "${GHCR_REPO}" "${digest}"; done)
+          docker buildx imagetools create -t ${GHCR_REPO}:latest ${ghcr_digests}
 
-      # Create and push manifest lists for ${{ needs.build.outputs.latest_tag }} tag
       - name: Create manifest list and push (version)
-        working-directory: /tmp/digests
+        working-directory: ${{ runner.temp }}/digests
         run: |
-          ghcr_digests=$(for digest in *; do printf '${{ env.REGISTRY_IMAGE_GHCR }}@sha256:%s ' "$digest"; done)
-          docker buildx imagetools create -t ${{ env.REGISTRY_IMAGE_GHCR }}:${{ needs.build.outputs.latest_tag }} $ghcr_digests
+          ghcr_digests=$(for digest in *; do printf '%s@sha256:%s ' "${GHCR_REPO}" "${digest}"; done)
+          docker buildx imagetools create -t ${GHCR_REPO}:${latest_tag} ${ghcr_digests}
 
-      # Inspect images
       - name: Inspect image
         run: |
-          docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE_GHCR }}:${{ env.SET_IMAGE_TAG }}
-          docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE_GHCR }}:${{ needs.build.outputs.latest_tag }}
+          docker buildx imagetools inspect ${GHCR_REPO}:latest
+          docker buildx imagetools inspect ${GHCR_REPO}:${latest_tag}

@@ -53,22 +53,20 @@ on:
         type: choice
         options: ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
 
-  schedule:
-    - cron: "*/5 * * * *" # every 5 minutes
+  # schedule:
+  #   - cron: "*/5 * * * *" # every 5 minutes
 
-permissions:
-  actions: write
-  id-token: write
-  contents: write
-  attestations: write
-  packages: write
+permissions: {}
 
 env:
   GH_TOKEN: "${{ github.TOKEN }}"
 
 jobs:
   skip_duplicate_job:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      actions: write
+      contents: read
     outputs:
       should_skip: ${{ steps.skip_check.outputs.should_skip }}
     steps:
@@ -83,7 +81,9 @@ jobs:
   scheduled_defaults:
     if: needs.skip_duplicate_job.outputs.should_skip != 'true'
     needs: skip_duplicate_job
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
     outputs:
       source_repo: ${{ github.event.inputs.source_repo || 'https://github.com/esnet/iperf.git' }}
       source_branch: ${{ github.event.inputs.source_branch || 'master' }}
@@ -110,38 +110,53 @@ jobs:
   show_outputs:
     if: needs.skip_duplicate_job.outputs.should_skip != 'true'
     needs: scheduled_defaults
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
+    env:
+      source_repo: ${{ needs.scheduled_defaults.outputs.source_repo }}
+      source_branch: ${{ needs.scheduled_defaults.outputs.source_branch }}
+      artifacts_only: ${{ needs.scheduled_defaults.outputs.artifacts_only }}
+      skip_new_tag_check: ${{ needs.scheduled_defaults.outputs.skip_new_tag_check }}
+      linux_build_type: ${{ needs.scheduled_defaults.outputs.linux_build_type }}
+      linux: ${{ needs.scheduled_defaults.outputs.linux }}
+      windows: ${{ needs.scheduled_defaults.outputs.windows }}
+      osx: ${{ needs.scheduled_defaults.outputs.osx }}
+      skip_rerun: ${{ needs.scheduled_defaults.outputs.skip_rerun }}
+      retries: ${{ needs.scheduled_defaults.outputs.retries }}
     steps:
       - name: Set output
         run: |
           printf '%b\n' "# Scheduled Defaults Outputs Summary" >> $GITHUB_STEP_SUMMARY
           printf '\n%b\n' ":octocat: Here is a summary of inputs set as string outputs that are used in workflows." >> $GITHUB_STEP_SUMMARY
 
-          printf '\n%b\n' "source_repo: \`${{ needs.scheduled_defaults.outputs.source_repo }}\`" >> $GITHUB_STEP_SUMMARY
-          printf '\n%b\n' "source_branch: \`${{ needs.scheduled_defaults.outputs.source_branch }}\`" >> $GITHUB_STEP_SUMMARY
-          printf '\n%b\n' "artifacts_only: \`${{ needs.scheduled_defaults.outputs.artifacts_only }}\`" >> $GITHUB_STEP_SUMMARY
-          printf '\n%b\n' "skip_new_tag_check: \`${{ needs.scheduled_defaults.outputs.skip_new_tag_check }}\`" >> $GITHUB_STEP_SUMMARY
-          printf '\n%b\n' "linux_build_type: \`${{ needs.scheduled_defaults.outputs.linux_build_type }}\`" >> $GITHUB_STEP_SUMMARY
-          printf '\n%b\n' "linux: \`${{ needs.scheduled_defaults.outputs.linux }}\`" >> $GITHUB_STEP_SUMMARY
-          printf '\n%b\n' "windows: \`${{ needs.scheduled_defaults.outputs.windows }}\`" >> $GITHUB_STEP_SUMMARY
-          printf '\n%b\n' "osx: \`${{ needs.scheduled_defaults.outputs.osx }}\`" >> $GITHUB_STEP_SUMMARY
-          printf '\n%b\n' "skip_rerun: \`${{ needs.scheduled_defaults.outputs.skip_rerun }}\`" >> $GITHUB_STEP_SUMMARY
-          printf '\n%b\n' "retries: \`${{ needs.scheduled_defaults.outputs.retries }}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "source_repo: \`${source_repo}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "source_branch: \`${source_branch}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "artifacts_only: \`${artifacts_only}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "skip_new_tag_check: \`${skip_new_tag_check}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "linux_build_type: \`${linux_build_type}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "linux: \`${linux}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "windows: \`${windows}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "osx: \`${osx}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "skip_rerun: \`${skip_rerun}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "retries: \`${retries}\`" >> $GITHUB_STEP_SUMMARY
 
   iperf3_tag:
     needs: scheduled_defaults
     if: needs.scheduled_defaults.outputs.skip_new_tag_check == 'false' && needs.skip_duplicate_job.outputs.should_skip != 'true'
     uses: ./.github/workflows/ci-check-for-new-release-tag.yml
-    secrets: inherit
 
   linux_emulation:
     needs: [scheduled_defaults, iperf3_tag]
     if: >
-      always() &&
+      always() && !failure() && !cancelled() &&
       ( needs.iperf3_tag.outputs.continue_build == 'yes' || needs.scheduled_defaults.outputs.skip_new_tag_check == 'true' ) &&
       ( needs.scheduled_defaults.outputs.linux == 'false' && needs.scheduled_defaults.outputs.linux_build_type == 'false' && needs.skip_duplicate_job.outputs.should_skip != 'true' )
+    permissions:
+      id-token: write
+      attestations: write
+      contents: read
     uses: ./.github/workflows/ci-linux-emulation.yml
-    secrets: inherit
+    secrets:
+      VT_API_KEY: ${{ secrets.VT_API_KEY || '' }}
     with:
       source_repo: ${{ needs.scheduled_defaults.outputs.source_repo }}
       source_branch: ${{ needs.scheduled_defaults.outputs.source_branch }}
@@ -149,11 +164,16 @@ jobs:
   linux_crossbuild:
     needs: [scheduled_defaults, iperf3_tag]
     if: >
-      always() &&
+      always() && !failure() && !cancelled() &&
       ( needs.iperf3_tag.outputs.continue_build == 'yes' || needs.scheduled_defaults.outputs.skip_new_tag_check == 'true' ) &&
       ( needs.scheduled_defaults.outputs.linux == 'false' && needs.scheduled_defaults.outputs.linux_build_type == 'true' && needs.skip_duplicate_job.outputs.should_skip != 'true' )
+    permissions:
+      id-token: write
+      attestations: write
+      contents: read
     uses: ./.github/workflows/ci-linux-crossbuild.yml
-    secrets: inherit
+    secrets:
+      VT_API_KEY: ${{ secrets.VT_API_KEY || '' }}
     with:
       source_repo: ${{ needs.scheduled_defaults.outputs.source_repo }}
       source_branch: ${{ needs.scheduled_defaults.outputs.source_branch }}
@@ -161,11 +181,16 @@ jobs:
   windows:
     needs: [scheduled_defaults, iperf3_tag]
     if: >
-      always() &&
+      always() && !failure() && !cancelled() &&
       ( needs.iperf3_tag.outputs.continue_build == 'yes' || needs.scheduled_defaults.outputs.skip_new_tag_check == 'true' ) &&
       ( needs.scheduled_defaults.outputs.windows == 'false' && needs.skip_duplicate_job.outputs.should_skip != 'true' )
+    permissions:
+      id-token: write
+      attestations: write
+      contents: read
     uses: ./.github/workflows/ci-windows.yml
-    secrets: inherit
+    secrets:
+      VT_API_KEY: ${{ secrets.VT_API_KEY || '' }}
     with:
       source_repo: ${{ needs.scheduled_defaults.outputs.source_repo }}
       source_branch: ${{ needs.scheduled_defaults.outputs.source_branch }}
@@ -174,9 +199,13 @@ jobs:
   osx:
     needs: [scheduled_defaults, iperf3_tag]
     if: >
-      always() &&
+      always() && !failure() && !cancelled() &&
       ( needs.iperf3_tag.outputs.continue_build == 'yes' || needs.scheduled_defaults.outputs.skip_new_tag_check == 'true' ) &&
       ( needs.scheduled_defaults.outputs.osx == 'false' && needs.skip_duplicate_job.outputs.should_skip != 'true' )
+    permissions:
+      id-token: write
+      attestations: write
+      contents: read
     strategy:
       matrix:
         target: [macos-13, macos-latest]
@@ -190,7 +219,8 @@ jobs:
             brew_cellar: "/opt/homebrew/Cellar"
             brew_install: "brew install autoconf automake libtool"
     uses: ./.github/workflows/ci-osx.yml
-    secrets: inherit
+    secrets:
+      VT_API_KEY: ${{ secrets.VT_API_KEY }}
     with:
       brew_cellar: ${{ matrix.brew_cellar }}
       brew_install: ${{ matrix.brew_install }}
@@ -202,13 +232,14 @@ jobs:
   release:
     needs: [scheduled_defaults, linux_emulation, linux_crossbuild, windows, osx]
     if: >
-      always() &&
+      always() && !failure() && !cancelled() &&
       ( needs.linux_emulation.result == 'success' || needs.linux_crossbuild.result == 'success' || needs.windows.result == 'success' || needs.osx.result == 'success' ) &&
       !contains(needs.*.result, 'failure') &&
       needs.scheduled_defaults.outputs.artifacts_only == 'false' &&
       needs.skip_duplicate_job.outputs.should_skip != 'true'
+    permissions:
+      contents: write
     uses: ./.github/workflows/ci-release.yml
-    secrets: inherit
     with:
       release_tags: ${{ needs.linux_emulation.outputs.release_tags || needs.linux_crossbuild.outputs.release_tags || needs.windows.outputs.release_tags || needs.osx.outputs.release_tags }}
       test_linux_emulation: ${{ needs.linux_emulation.result }}
@@ -219,14 +250,15 @@ jobs:
   docker:
     needs: [scheduled_defaults, linux_emulation, linux_crossbuild, release]
     if: >
-      always() &&
+      always() && !failure() && !cancelled() &&
       ( needs.linux_emulation.result == 'success' || needs.linux_crossbuild.result == 'success' ) &&
       !contains(needs.*.result, 'failure') &&
       needs.scheduled_defaults.outputs.linux == 'false' &&
       needs.scheduled_defaults.outputs.artifacts_only == 'false' &&
       needs.skip_duplicate_job.outputs.should_skip != 'true'
+    permissions:
+      packages: write
     uses: ./.github/workflows/ci-docker.yml
-    secrets: inherit
 
   rerun_on_failure:
     needs:
@@ -250,18 +282,22 @@ jobs:
       cancel-in-progress: true
     permissions:
       actions: write
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     env:
       GH_TOKEN: "${{ secrets.AUTO_RERUN || github.token }}"
       github_repo: "" # To use ci-auto-rerun-failed-jobs.yml hosted in a remote repository else default to the current repository. Requires PAT token AUTO_RERUN
+      retries: ${{ github.event.inputs.retries || '1' }}
+      distinct_id: ${{ github.event.inputs.distinct_id }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: ci-auto-rerun-failed-jobs via ${{ env.github_repo || github.repository }}
         run: >
-          gh workflow run ci-auto-rerun-failed-jobs.yml
-          --repo "${{ env.github_repo || github.repository }}"
-          -f github_repo=${{ github.repository }}
-          -f run_id=${{ github.run_id }}
-          -f attempts=${{ github.run_attempt }}
-          -f retries=${{ github.event.inputs.retries || '1' }}
-          -f distinct_id=${{ github.event.inputs.distinct_id }}
+          gh workflow run ci-auto-rerun-failed-jobs-action.yml
+          --repo "${github_repo:-$GITHUB_REPOSITORY}"
+          -f github_repo=${GITHUB_REPOSITORY}
+          -f run_id=${GITHUB_RUN_ID}
+          -f attempts=${GITHUB_RUN_ATTEMPT}
+          -f retries=${retries}
+          -f distinct_id=${distinct_id}

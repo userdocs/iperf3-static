@@ -16,22 +16,29 @@ on:
 
 env:
   GH_TOKEN: "${{ github.TOKEN }}"
+  release_tags: ${{ inputs.release_tags }}
+  test_linux_emulation: ${{ inputs.test_linux_emulation }}
+  test_linux_crossbuild: ${{ inputs.test_linux_crossbuild }}
+  test_windows: ${{ inputs.test_windows }}
+  test_osx: ${{ inputs.test_osx }}
 
 jobs:
   release:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Summary - needs results
         run: |
           printf '%s\n\n' "## Summary - needs results"
-          printf '%s\n\n' "release_tags: \`${{ inputs.release_tags }}\`" >> $GITHUB_STEP_SUMMARY
-          printf '\n%s\n' "test_linux_emulation: \`${{ inputs.test_linux_emulation }}\`" >> $GITHUB_STEP_SUMMARY
-          printf '\n%s\n' "test_linux_crossbuild: \`${{ inputs.test_linux_crossbuild }}\`" >> $GITHUB_STEP_SUMMARY
-          printf '\n%s\n' "test_windows: \`${{ inputs.test_windows }}\`" >> $GITHUB_STEP_SUMMARY
-          printf '\n%s\n' "test_osx: \`${{ inputs.test_osx }}\`" >> $GITHUB_STEP_SUMMARY
+          printf '%s\n\n' "release_tags: \`${release_tags}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%s\n' "test_linux_emulation: \`${test_linux_emulation}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%s\n' "test_linux_crossbuild: \`${test_linux_crossbuild}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%s\n' "test_windows: \`${test_windows}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%s\n' "test_osx: \`${test_osx}\`" >> $GITHUB_STEP_SUMMARY
 
       - name: Download artifacts
         uses: actions/download-artifact@v4
@@ -50,7 +57,7 @@ jobs:
 
           readarray -t release_sorted < <(printf '%s\n' "${dependency_version[@]}" | sort)
 
-          if command_output="$(gh release view "${{ inputs.release_tags }}" --repo "${{ github.repository }}" --json body -q .body 2>&1)"; then
+          if command_output="$(gh release view "${release_tags}" --repo "${{ github.repository }}" --json body -q .body 2>&1)"; then
             if [[ -n "${command_output}" ]]; then
               sed '/<!-- split body -->/ {q}' ${{ github.workspace }}/ci-release-body.md > ci-release-body.md
               printf '%s\n' "$command_output" | sed -n '/<!-- split urls -->/,$p' >> ci-release-body.md

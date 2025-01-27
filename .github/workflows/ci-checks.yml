@@ -1,0 +1,76 @@
+name: ci - checks
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sh-checker:
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Run the sh-checker
+        uses: luizm/action-sh-checker@v0.9.0
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          SHELLCHECK_OPTS: -e SC2034,SC1091 # It is possible to exclude some shellcheck warnings.
+          SHFMT_OPTS: -ci -sr -i 0 # It is possible to pass arguments to shftm
+        with:
+          sh_checker_comment: true
+          sh_checker_exclude: ""
+
+  zizmor-checker:
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Check GitHub Action workflows
+        shell: bash {0}
+        run: |
+          pip install zizmor
+
+          zizmor="$(zizmor . --gh-token "${{ github.token }}")"
+          exit_code="$?"
+
+          printf '%s\n' "$zizmor"
+
+          printf '%b\n' "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          printf '%s\n' "$zizmor" >> $GITHUB_STEP_SUMMARY
+          printf '%b' "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+          exit "$exit_code"
+
+  editorconfig-checker:
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: editorconfig-checker
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          curl -Lo- "https://github.com/editorconfig-checker/editorconfig-checker/releases/latest/download/ec-linux-amd64.tar.gz" | tar xzf - --strip-components=1
+
+          printf '%b\n' "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          ./ec-linux-amd64 --exclude '^(docs/.*|patches/.*)$' | sed "s,\x1B\[[0-9;]*[a-zA-Z],,g" >> $GITHUB_STEP_SUMMARY
+          exit_code=("${PIPESTATUS[0]}")
+          printf '%b' "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+          # exit "${exit_code}"

@@ -12,12 +12,16 @@ on:
       source_branch:
         type: string
         required: true
+    secrets:
+      VT_API_KEY:
+        required: false
+
 env:
   GH_TOKEN: "${{ github.TOKEN }}"
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     outputs:
       release_tags: ${{ steps.release_tags.outputs.release_tag }}
     strategy:
@@ -62,37 +66,38 @@ jobs:
       CXXFLAGS: "--static -static"
       CPPFLAGS: "--static -static"
       LDFLAGS: "--static -static"
+      source_repo: ${{ inputs.source_repo }}
+      source_branch: ${{ inputs.source_branch }}
+      container_name: mcm
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Host - phased updates
-        run: printf '%s\n' 'APT::Get::Always-Include-Phased-Updates "false";' | sudo tee /etc/apt/apt.conf.d/99-phased-updates
-
-      - name: Host - update
-        run: sudo apt-get update
-
-      # - name: Host - upgrade
-      #   run: sudo apt-get -y upgrade
+        with:
+          persist-credentials: false
 
       - name: Host - set up qemu-user-static binfmt-support
         run: sudo apt install libpipeline1 qemu-user-static binfmt-support
 
-      - name: Create docker multiarch ${{ matrix.platform }} container
-        run: docker run --name multiarch -it -d -w /root -e CXXFLAGS="${{ env.CXXFLAGS }}" -e CPPFLAGS="${{ env.CPPFLAGS }}" -e LDFLAGS="${{ env.LDFLAGS }}" -v ${{ github.workspace }}:/root ghcr.io/userdocs/qbt-musl-cross-make:${{ matrix.qbt-musl-cross-make }}
+      - name: Create docker ${{ env.container_name }} ${{ matrix.platform }} container
+        run: >
+          docker run --name ${container_name} -it -d -w /home/gh -v ${{ github.workspace }}:/home/gh
+          -e CXXFLAGS="${{ env.CXXFLAGS }}"
+          -e CPPFLAGS="${{ env.CPPFLAGS }}"
+          -e LDFLAGS="${{ env.LDFLAGS }}"
+          ghcr.io/userdocs/qbt-musl-cross-make:${{ matrix.qbt-musl-cross-make }}
 
       - name: Run apk update
-        run: docker exec multiarch apk update --repository=${{ env.CDN }}
+        run: docker exec ${container_name} apk update
 
       - name: Run apk upgrade
-        run: docker exec multiarch apk upgrade --repository=${{ env.CDN }}
+        run: docker exec ${container_name} apk upgrade
 
-      - name: mkdir -p /root/local
-        run: docker exec multiarch /bin/bash /root/ci-linux-crossbuild.sh ${{ inputs.source_repo }} ${{ inputs.source_branch }} ${{ matrix.qbt-musl-cross-make }} ${{ matrix.arch }}
+      - name: run ci-linux-crossbuild.sh
+        run: docker exec -u gh:gh ${container_name} /bin/bash /home/gh/ci-linux-crossbuild.sh ${source_repo} ${source_branch} ${{ matrix.qbt-musl-cross-make }} ${{ matrix.arch }}
 
       - name: Rename ${{ matrix.name }} to ${{ matrix.name }}-${{ matrix.release_name }}
-        run: docker exec multiarch mv -f /root/local/bin/${{ matrix.name }} /root/${{ matrix.name }}-${{ matrix.release_name }}
+        run: docker exec -u gh:gh ${container_name} mv -f /home/gh/local/bin/${{ matrix.name }} /home/gh/${{ matrix.name }}-${{ matrix.release_name }}
 
       - name: Create path to binary env
         run: printf '%s\n' "binary_path=${{ github.workspace }}/${{ matrix.name }}-${{ matrix.release_name }}" >> $GITHUB_ENV

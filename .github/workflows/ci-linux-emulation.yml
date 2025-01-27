@@ -12,13 +12,16 @@ on:
       source_branch:
         type: string
         required: true
+    secrets:
+      VT_API_KEY:
+        required: false
 
 env:
   GH_TOKEN: "${{ github.TOKEN }}"
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     outputs:
       release_tags: ${{ steps.release_tags.outputs.release_tag }}
     strategy:
@@ -31,25 +34,18 @@ jobs:
         include:
           - arch: amd64
             platform: linux/amd64
-
           - arch: arm32v6
             platform: linux/arm/v6
-
           - arch: arm32v7
             platform: linux/arm/v7
-
           - arch: arm64v8
             platform: linux/arm64
-
           - arch: i386
             platform: linux/i386
-
           - arch: ppc64le
             platform: linux/ppc64le
-
           - arch: riscv64
             platform: linux/riscv64
-
           - arch: s390x
             platform: linux/s390x
 
@@ -60,49 +56,53 @@ jobs:
       CXXFLAGS: "--static -static"
       CPPFLAGS: "--static -static"
       LDFLAGS: "--static -static"
+      source_repo: ${{ inputs.source_repo }}
+      source_branch: ${{ inputs.source_branch }}
+      container_name: mcm
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Host - phased update
-        run: printf '%s\n' 'APT::Get::Always-Include-Phased-Updates "false";' | sudo tee /etc/apt/apt.conf.d/99-phased-updates
-
-      - name: Host - update
-        run: sudo apt-get update
-
-      # - name: Host - upgrade
-      #   run: sudo apt-get -y upgrade
+        with:
+          persist-credentials: false
 
       - name: Host - set up qemu-user-static binfmt-support
         run: sudo apt install libpipeline1 qemu-user-static binfmt-support
 
-      - name: Create docker multiarch ${{ matrix.platform }} container
-        run: docker run --name multiarch -it -d -w /root -e CXXFLAGS="${{ env.CXXFLAGS }}" -e CPPFLAGS="${{ env.CPPFLAGS }}" -e LDFLAGS="${{ env.LDFLAGS }}" --platform ${{ matrix.platform }} -v ${{ github.workspace }}:/root ${{ matrix.arch }}/${{ matrix.os_id }}:${{ matrix.os_version_id }}
+      - name: Create docker ${{ env.container_name }} ${{ matrix.platform }} container
+        run: >
+          docker run --name ${container_name} -it -d -w /home/gh -v ${{ github.workspace }}:/home/gh --platform ${{ matrix.platform }}
+          -e CXXFLAGS="${{ env.CXXFLAGS }}"
+          -e CPPFLAGS="${{ env.CPPFLAGS }}"
+          -e LDFLAGS="${{ env.LDFLAGS }}"
+          ${{ matrix.arch }}/${{ matrix.os_id }}:${{ matrix.os_version_id }}
+
+          docker exec ${container_name} sh -c 'adduser -h /home/gh -Ds /bin/bash -u 1001 gh && apk add sudo'
+          docker exec ${container_name} sh -c 'printf "%s" "gh ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/gh'
 
       - name: Run apk update
-        run: docker exec multiarch apk update --repository=${{ env.CDN }}
+        run: docker exec ${container_name} apk update
 
       - name: Run apk upgrade
-        run: docker exec multiarch apk upgrade --repository=${{ env.CDN }}
+        run: docker exec ${container_name} apk upgrade
 
       - name: Run apk to install the core build dependencies
-        run: docker exec multiarch apk add build-base pkgconf autoconf automake curl libtool git tar curl perl openssl-dev openssl-libs-static linux-headers
+        run: docker exec ${container_name} apk add build-base pkgconf autoconf automake curl libtool git tar curl perl openssl-dev openssl-libs-static linux-headers
 
       - name: Git clone ${{ matrix.name }}
-        run: docker exec multiarch git clone --no-tags --single-branch --branch "${{ inputs.source_branch }}" --shallow-submodules --recurse-submodules -j"$(nproc)" --depth 1 "${{ inputs.source_repo }}" /root/${{ matrix.name }}
+        run: docker exec -u gh:gh ${container_name} git clone --no-tags --single-branch --branch "${source_branch}" --shallow-submodules --recurse-submodules -j"$(nproc)" --depth 1 "${source_repo}" /home/gh/${{ matrix.name }}
 
       - name: Configure ${{ matrix.name }}
-        run: docker exec -w /root/${{ matrix.name }} multiarch ./configure --disable-shared --with-openssl=/usr --enable-static-bin --prefix=/root
+        run: docker exec -u gh:gh -w /home/gh/${{ matrix.name }} ${container_name} ./configure --disable-shared --with-openssl=/usr --enable-static-bin --prefix=/home/gh
 
       - name: Make Build ${{ matrix.name }}
-        run: docker exec -w /root/${{ matrix.name }} multiarch make -j$(nproc)
+        run: docker exec -u gh:gh -w /home/gh/${{ matrix.name }} ${container_name} make -j$(nproc)
 
       - name: Make Install Build ${{ matrix.name }}
-        run: docker exec -w /root/${{ matrix.name }} multiarch make install
+        run: docker exec -u gh:gh -w /home/gh/${{ matrix.name }} ${container_name} make install
 
       - name: Rename ${{ matrix.name }} to ${{ matrix.name }}-${{ matrix.arch }}
-        run: docker exec multiarch mv -f /root/bin/${{ matrix.name }} /root/${{ matrix.name }}-${{ matrix.arch }}
+        run: docker exec -u gh:gh ${container_name} mv -f /home/gh/bin/${{ matrix.name }} /home/gh/${{ matrix.name }}-${{ matrix.arch }}
 
       - name: Create path to binary env
         run: printf '%s\n' "binary_path=${{ github.workspace }}/${{ matrix.name }}-${{ matrix.arch }}" >> $GITHUB_ENV
