@@ -1,5 +1,19 @@
 # iperf3 static builds
 
+- iperf3 windows builds
+- iperf3 linux builds
+- iperf3 macosx builds
+
+The only resource providing multiplatform distro independent iperf3 latest releases that has a 100% transparent build process from end to end. Complete accountability and verified chain of custody. No hidden parts.
+
+- [Chain of custody and build provenance](https://github.com/userdocs/iperf3-static?tab=readme-ov-file#gh-attestation-verify) - easily verify the archive or binary was created here.
+- [Transparent build process from source code to binary](https://github.com/userdocs/iperf3-static/actions) - source code > workflow > verification > release.
+- [Virustotal scan and details during the build process](https://github.com/userdocs/iperf3-static?tab=readme-ov-file#gh-attestation-verify) - scanned before release.
+- [Zizmor workflow auditing](https://github.com/woodruffw/zizmor) - helping ensure the worklow itself is not poisoned.
+- Powerful build system with ability to specify repo and branches to easily build patches or custom builds.
+
+![](.github/assets/images/inputs.png)
+
 ## Build Platforms
 
 - [Alpine linux](https://alpinelinux.org) edge using [qemu emulation](https://www.qemu.org)
