@@ -1,6 +1,5 @@
 FROM alpine:latest AS builder
 
-ARG PLATFORM
 ARG ARCH="amd64"
 ARG REPO="userdocs/iperf3-static"
 
