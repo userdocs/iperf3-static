@@ -27,18 +27,21 @@ Linux:
 - Arch: `amd64` `arm32v6` `arm32v7` `arm64v8` `i386` `ppc64le` `riscv64` `s390x`
 - Docker: yes
 - Static binaries: yes
+- Openssl latest release - https://github.com/openssl/openssl/releases/latest
 
 Windows:
 
 - Arch: `amd64`
 - Docker: no
 - Static binaries: yes
+- Openssl 3.1.x - Releases after this don't work with cygwin / iperf3 for windows builds.
 
 MacOS:
 
 - Arch: `amd64` `arm64`
 - Docker: no
 - Static binaries: yes
+- Openssl@3 - https://formulae.brew.sh/formula/openssl@3
 
 > [!NOTE]
 > Windows and MacOS binaries are not fully static in terms of their dependency and `cygwin1.dll` (Windows) `libSystem.B.dylib` (MasOS).
