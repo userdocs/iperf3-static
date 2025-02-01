@@ -2,7 +2,11 @@
 
 HOME="$(pwd)"
 with_openssl="${1:-no}"
-cygwin_path="${2:-${HOME}}/cygwin"
+if [[ "${2}" =~ ^/ ]]; then
+	cygwin_path="${2}"
+else
+	cygwin_path="${HOME}/${2:-cygwin}"
+fi
 source_repo="${3:-https://github.com/esnet/iperf.git}"
 source_branch="${4:-master}"
 
@@ -10,11 +14,18 @@ printf '\n%b\n' " \e[93m\U25cf\e[0m With openssl = ${with_openssl}"
 printf '%b\n' " \e[93m\U25cf\e[0m Build path = ${HOME}"
 printf '%b\n' " \e[93m\U25cf\e[0m Cygwin path = ${cygwin_path}"
 
+printf '\n%b\n' " \e[93m\U25cf\e[0m parameters = ${*}"
+
+printf '\n%b\n' " \e[93m\U25cf\e[0m with_openssl = ${with_openssl}"
+printf '\n%b\n' " \e[93m\U25cf\e[0m cygwin_path = ${cygwin_path}"
+printf '\n%b\n' " \e[93m\U25cf\e[0m source_repo = ${source_repo}"
+printf '\n%b\n' " \e[93m\U25cf\e[0m source_branch = ${source_branch}"
+
 if [[ "${with_openssl}" == 'yes' ]]; then
 	printf '\n%b\n' " \e[94m\U25cf\e[0m Downloading zlib"
 	curl -sLO "https://github.com/userdocs/qbt-workflow-files/releases/latest/download/zlib.tar.xz"
 
-	openssl_version="$(git ls-remote -q -t --refs "https://github.com/openssl/openssl.git" | awk '/openssl-3\.0\./{sub("refs/tags/", "");sub("(.*)(v6|rc|alpha|beta)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n1)"
+	openssl_version="$(git ls-remote -q -t --refs "https://github.com/openssl/openssl.git" | awk '/openssl-3\.1\./{sub("refs/tags/", "");sub("(.*)(v6|rc|alpha|beta)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n1)"
 
 	printf '\n%b\n' " \e[94m\U25cf\e[0m Downloading openssl ${openssl_version}"
 	curl -sLO "https://github.com/openssl/openssl/releases/download/${openssl_version}/${openssl_version}.tar.gz"
@@ -38,7 +49,7 @@ if [[ "${with_openssl}" == 'yes' ]]; then
 
 	printf '\n%b\n\n' " \e[94m\U25cf\e[0m Configuring openssl"
 	pushd "${HOME}/openssl" || exit 1
-	./config --prefix="${cygwin_path}" threads no-shared no-dso no-comp
+	./config --prefix="${cygwin_path}" --libdir=lib threads no-shared no-dso no-comp
 
 	printf '\n%b\n\n' " \e[94m\U25cf\e[0m Building openssl"
 	make -j"$(nproc)"
@@ -50,6 +61,7 @@ fi
 printf '\n%b\n\n' " \e[94m\U25cf\e[0m Cloning iperf3 git repo"
 
 [[ -d "$HOME/iperf3_build" ]] && rm -rf "$HOME/iperf3_build"
+printf '\n%b\n\n' " \e[94m\U25cf\e[0m git clone --no-tags --single-branch --branch ${source_branch} --shallow-submodules --recurse-submodules -j$(nproc) --depth 1 ${source_repo} $HOME/iperf3_build"
 git clone --no-tags --single-branch --branch "${source_branch}" --shallow-submodules --recurse-submodules -j"$(nproc)" --depth 1 "${source_repo}" "$HOME/iperf3_build"
 cd "$HOME/iperf3_build" || exit 1
 

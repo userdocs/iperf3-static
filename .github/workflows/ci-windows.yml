@@ -44,7 +44,7 @@ jobs:
     name: ${{ matrix.name }}-${{ matrix.arch }}-win${{ matrix.filename }}.zip
 
     env:
-      cygwin_path: ""
+      cygwin_path: "cygwin"
       source_branch: ${{ inputs.source_branch }}
       source_repo: ${{ inputs.source_repo }}
 
@@ -61,7 +61,7 @@ jobs:
 
       - name: Build static
 
-        run: .\cygwin\bin\bash.exe -l ci-windows-cygwin-build.sh "${{ matrix.openssl }}" "${{ env.cygwin_path }}" "${source_repo}" "${source_branch}"
+        run: .\cygwin\bin\bash.exe -l ci-windows-cygwin-build.sh "${{ matrix.openssl }}" "$env:cygwin_path" "$env:source_repo" "$env:source_branch"
 
       - name: VirusTotal Scan
         id: virustotal
