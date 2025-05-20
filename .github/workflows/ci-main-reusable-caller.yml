@@ -159,7 +159,7 @@ jobs:
       VT_API_KEY: ${{ secrets.VT_API_KEY || '' }}
     with:
       source_repo: ${{ needs.scheduled_defaults.outputs.source_repo }}
-      source_branch: ${{ needs.scheduled_defaults.outputs.source_branch }}
+      source_branch: ${{ needs.iperf3_tag.outputs.iperf3_tag || needs.scheduled_defaults.outputs.source_branch }}
 
   linux_crossbuild:
     needs: [scheduled_defaults, iperf3_tag]
@@ -176,7 +176,7 @@ jobs:
       VT_API_KEY: ${{ secrets.VT_API_KEY || '' }}
     with:
       source_repo: ${{ needs.scheduled_defaults.outputs.source_repo }}
-      source_branch: ${{ needs.scheduled_defaults.outputs.source_branch }}
+      source_branch: ${{ needs.iperf3_tag.outputs.iperf3_tag || needs.scheduled_defaults.outputs.source_branch }}
 
   windows:
     needs: [scheduled_defaults, iperf3_tag]
@@ -193,7 +193,7 @@ jobs:
       VT_API_KEY: ${{ secrets.VT_API_KEY || '' }}
     with:
       source_repo: ${{ needs.scheduled_defaults.outputs.source_repo }}
-      source_branch: ${{ needs.scheduled_defaults.outputs.source_branch }}
+      source_branch: ${{ needs.iperf3_tag.outputs.iperf3_tag || needs.scheduled_defaults.outputs.source_branch }}
       artifacts_only: ${{ needs.scheduled_defaults.outputs.artifacts_only }}
 
   osx:
@@ -226,7 +226,7 @@ jobs:
       brew_install: ${{ matrix.brew_install }}
       target: ${{ matrix.target }}
       source_repo: ${{ needs.scheduled_defaults.outputs.source_repo }}
-      source_branch: ${{ needs.scheduled_defaults.outputs.source_branch }}
+      source_branch: ${{ needs.iperf3_tag.outputs.iperf3_tag || needs.scheduled_defaults.outputs.source_branch }}
       binary_filename: ${{ matrix.binary_filename }}
 
   release:

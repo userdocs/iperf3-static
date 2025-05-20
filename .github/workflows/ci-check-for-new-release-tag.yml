@@ -5,6 +5,8 @@ on:
     outputs:
       continue_build:
         value: ${{ jobs.check_release.outputs.continue_build }}
+      iperf3_tag:
+        value: ${{ jobs.check_release.outputs.iperf3_tag }}
 
 env:
   GH_TOKEN: "${{ github.TOKEN }}"
@@ -13,6 +15,7 @@ jobs:
   check_release:
     outputs:
       continue_build: ${{ steps.continue_build_check.outputs.continue_build_choice }}
+      iperf3_tag: ${{ steps.continue_build_check.outputs.iperf3_tag }}
     runs-on: ubuntu-24.04-arm
 
     steps:
@@ -23,10 +26,10 @@ jobs:
           persist-credentials: false
 
       - name: Get latest esnet/iperf tag
-        run: printf '%s\n' "upstream_iperf3_tag=$(git ls-remote -q -t --refs "https://github.com/esnet/iperf.git" | awk '{sub("refs/tags/", "");sub("(.*)(-|rc|iperf|trunk|3.1b1|3.1b2|3.1b3)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n1)" >> $GITHUB_ENV
+        run: printf '%s\n' "upstream_iperf3_tag=$(git ls-remote -q -t --refs "https://github.com/esnet/iperf.git" | awk '{sub("refs/tags/", ""); if ($2 ~ /^[0-9]+(\.[0-9]+)*$/) print $2 }' | sort -rV | awk '!/^$/' | head -n 1)" >> $GITHUB_ENV
 
       - name: Get latest ${{ github.repository }} tag
-        run: printf '%s\n' "local_iperf3_tag=$(git ls-remote -q -t --refs "https://github.com/${{ github.repository }}.git" | awk '{sub("refs/tags/", "");sub("(.*)(-|rc|iperf|trunk|3.1b1|3.1b2|3.1b3)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n1)" >> $GITHUB_ENV
+        run: printf '%s\n' "local_iperf3_tag=$(git ls-remote -q -t --refs "https://github.com/${{ github.repository }}.git" | awk '{sub("refs/tags/", ""); if ($2 ~ /^[0-9]+(\.[0-9]+)*$/) print $2 }' | sort -rV | awk '!/^$/' | head -n 1)" >> $GITHUB_ENV
 
       - name: Test values - latest upstream vs local tags
         id: continue_build_check
@@ -42,6 +45,7 @@ jobs:
           if [[ "$(ver "${{ env.upstream_iperf3_tag }}")" -gt "$(ver "${local_iperf3_tag//+/}")" ]]; then
             printf "%-14s remote:%-10s local:%-10s %s\n" "$iray" "${{ env.upstream_iperf3_tag }}" "${local_iperf3_tag//+/}" "< New version available - workflow will be triggered"
             printf '%s\n' "continue_build_choice=yes" >> $GITHUB_OUTPUT
+            printf '%s\n' "iperf3_tag=${{ env.upstream_iperf3_tag }}" >> $GITHUB_OUTPUT
           else
             printf "%-14s remote:%-10s local:%-10s\n" "$iray" "${{ env.upstream_iperf3_tag }}" "${local_iperf3_tag//+/}"
           fi
