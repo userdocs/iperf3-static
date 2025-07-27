@@ -63,12 +63,15 @@ jobs:
 
     env:
       CDN: http://dl-cdn.alpinelinux.org/alpine/edge/main/
-      CXXFLAGS: "--static -static"
-      CPPFLAGS: "--static -static"
-      LDFLAGS: "--static -static"
+      CPPFLAGS: "-I/home/gh/local/include"
+      CFLAGS: ""
+      CXXFLAGS: ""
+      LDFLAGS: "-static --static -L/home/gh/local/lib"
       source_repo: ${{ inputs.source_repo }}
       source_branch: ${{ inputs.source_branch }}
       container_name: mcm
+      ws: ${{ github.workspace }}
+      arch: ${{ matrix.arch }}
 
     steps:
       - name: Checkout
@@ -79,11 +82,12 @@ jobs:
       - name: Host - Bootstrap qemu
         uses: userdocs/actions/qemu@main
 
-      - name: Create docker ${{ env.container_name }} ${{ matrix.platform }} container
+      - name: Create docker ${{ env.container_name }} ${{ matrix.arch }} container
         run: >
           docker run --name ${container_name} -it -d -w /home/gh -v ${{ github.workspace }}:/home/gh
-          -e CXXFLAGS="${{ env.CXXFLAGS }}"
           -e CPPFLAGS="${{ env.CPPFLAGS }}"
+          -e CFLAGS="${{ env.CXXFLAGS }}"
+          -e CXXFLAGS="${{ env.CXXFLAGS }}"
           -e LDFLAGS="${{ env.LDFLAGS }}"
           ghcr.io/userdocs/qbt-musl-cross-make:${{ matrix.qbt-musl-cross-make }}
 
@@ -93,8 +97,33 @@ jobs:
       - name: Run apk upgrade
         run: docker exec ${container_name} apk upgrade
 
-      - name: run ci-linux-crossbuild.sh
-        run: docker exec -u gh:gh ${container_name} /bin/bash /home/gh/ci-linux-crossbuild.sh ${source_repo} ${source_branch} ${{ matrix.qbt-musl-cross-make }} ${{ matrix.arch }}
+      - name: Iperf3 - Install openssl-static dependencies
+        run: |
+          docker exec ${container_name} cat /etc/apk/repositories > repositories.txt
+          # checking if the containers is latest or edge so that we get the correct openssl libs
+          cdn_repo="$(cat repositories.txt | sed -rn 's|https://dl-cdn.alpinelinux.org/alpine/(.*)/(.*)|\1|p' | head -1)"
+          # Getting openssl packages info for the current arch and release
+          openssl_libs_static=$(docker exec ${container_name} sh -c "apk info openssl-libs-static | head -1 | awk '{ print \$1 }'")
+          openssl_dev=$(docker exec ${container_name} sh -c "apk info openssl-dev | head -1 | awk '{ print \$1 }'")
+          # Downloading the openssl packages for the current arch and release
+          curl -sLO "https://dl-cdn.alpinelinux.org/alpine/${cdn_repo}/main/${arch}/${openssl_dev}.apk"
+          curl -sLO "https://dl-cdn.alpinelinux.org/alpine/${cdn_repo}/main/${arch}/${openssl_libs_static}.apk"
+          # Extracting the openssl packages
+          mkdir -p ${ws}/local
+          tar -xzf "${openssl_dev}.apk" --strip-components=1 -C ${ws}/local
+          tar -xzf "${openssl_libs_static}.apk" --strip-components=1 -C ${ws}/local
+
+      - name: Git clone ${{ matrix.name }}
+        run: docker exec -u gh:gh ${container_name} git clone --no-tags --single-branch --branch "${source_branch}" --shallow-submodules --recurse-submodules -j"$(nproc)" --depth 1 "${source_repo}" /home/gh/${{ matrix.name }}
+
+      - name: Configure ${{ matrix.name }}
+        run: docker exec -u gh:gh -w /home/gh/${{ matrix.name }} ${container_name} ./configure --with-openssl="/home/gh/local" --disable-shared --enable-static-bin --prefix="/home/gh/local"
+
+      - name: Make Build ${{ matrix.name }}
+        run: docker exec -u gh:gh -w /home/gh/${{ matrix.name }} ${container_name} make -j$(nproc)
+
+      - name: Make Install Build ${{ matrix.name }}
+        run: docker exec -u gh:gh -w /home/gh/${{ matrix.name }} ${container_name} make install
 
       - name: Rename ${{ matrix.name }} to ${{ matrix.name }}-${{ matrix.release_name }}
         run: docker exec -u gh:gh ${container_name} mv -f /home/gh/local/bin/${{ matrix.name }} /home/gh/${{ matrix.name }}-${{ matrix.release_name }}
@@ -111,7 +140,7 @@ jobs:
 
       - name: sha256sum
         run: |
-          printf '%s' https://www.virustotal.com/gui/file/$(sha256sum ${{ env.binary_path }} | awk '{print $1}') > ${{ matrix.name }}-${{ matrix.release_name }}.url
+          printf '%s' https://www.virustotal.com/gui/file/$(sha256sum ${binary_path} | awk '{print $1}') > ${{ matrix.name }}-${{ matrix.release_name }}.url
           cat ${{ matrix.name }}-${{ matrix.release_name }}.url
 
       - name: Create tag env
@@ -119,7 +148,7 @@ jobs:
 
       - name: Set tag env to output
         id: release_tags
-        run: printf '%s\n' "release_tag=${{ env.release_tag }}" >> "$GITHUB_OUTPUT"
+        run: printf '%s\n' "release_tag=${release_tag}" >> "$GITHUB_OUTPUT"
 
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v2

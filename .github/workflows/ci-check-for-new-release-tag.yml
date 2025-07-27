@@ -40,12 +40,12 @@ jobs:
             printf "%d%03d%03d%03d" "${test_array[@]}"
           }
 
-          local_iperf3_tag="${{ env.local_iperf3_tag }}"
+          local_iperf3_tag="${local_iperf3_tag}"
 
-          if [[ "$(ver "${{ env.upstream_iperf3_tag }}")" -gt "$(ver "${local_iperf3_tag//+/}")" ]]; then
-            printf "%-14s remote:%-10s local:%-10s %s\n" "$iray" "${{ env.upstream_iperf3_tag }}" "${local_iperf3_tag//+/}" "< New version available - workflow will be triggered"
+          if [[ "$(ver "${upstream_iperf3_tag}")" -gt "$(ver "${local_iperf3_tag//+/}")" ]]; then
+            printf "%-14s remote:%-10s local:%-10s %s\n" "$iray" "${upstream_iperf3_tag}" "${local_iperf3_tag//+/}" "< New version available - workflow will be triggered"
             printf '%s\n' "continue_build_choice=yes" >> $GITHUB_OUTPUT
-            printf '%s\n' "iperf3_tag=${{ env.upstream_iperf3_tag }}" >> $GITHUB_OUTPUT
+            printf '%s\n' "iperf3_tag=${upstream_iperf3_tag}" >> $GITHUB_OUTPUT
           else
-            printf "%-14s remote:%-10s local:%-10s\n" "$iray" "${{ env.upstream_iperf3_tag }}" "${local_iperf3_tag//+/}"
+            printf "%-14s remote:%-10s local:%-10s\n" "$iray" "${upstream_iperf3_tag}" "${local_iperf3_tag//+/}"
           fi

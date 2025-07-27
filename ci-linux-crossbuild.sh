@@ -16,8 +16,8 @@ printf '%s\n\n' "repo: $github_repo branch:$github_branch"
 
 sudo apk update
 
-CXXFLAGS="--static -static -I/home/gh/local/include"
-LDFLAGS="--static -static -L/home/gh/local/lib"
+CPPFLAGS="-I/home/gh/local/include"
+LDFLAGS="-static --static -L/home/gh/local/lib"
 
 cd || exit
 mkdir -p /home/gh/local

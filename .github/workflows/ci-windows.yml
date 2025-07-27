@@ -93,7 +93,7 @@ jobs:
 
       - name: Set tag env to output
         id: release_tags
-        run: printf '%s\n' "release_tag=${{ env.release_tag }}" >> $env:GITHUB_OUTPUT
+        run: printf '%s\n' "release_tag=${release_tag}" >> $env:GITHUB_OUTPUT
 
       - name: "Release - Create artifacts"
         if: inputs.artifacts_only == 'false'

@@ -34,7 +34,7 @@ Windows:
 - Arch: `amd64`
 - Docker: no
 - Static binaries: yes
-- Openssl 3.1.x - Releases after this don't work with cygwin / iperf3 for windows builds.
+- Openssl 3.0.x LTS (2026-09-07) - LTS Releases after this don't work with cygwin / iperf3 for windows builds.
 
 MacOS:
 

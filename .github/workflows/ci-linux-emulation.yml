@@ -116,7 +116,7 @@ jobs:
 
       - name: sha256sum
         run: |
-          printf '%s' https://www.virustotal.com/gui/file/$(sha256sum ${{ env.binary_path }} | awk '{print $1}') > ${{ matrix.name }}-${{ matrix.arch }}.url
+          printf '%s' https://www.virustotal.com/gui/file/$(sha256sum ${binary_path} | awk '{print $1}') > ${{ matrix.name }}-${{ matrix.arch }}.url
           cat ${{ matrix.name }}-${{ matrix.arch }}.url
 
       - name: Create tag env
@@ -124,7 +124,7 @@ jobs:
 
       - name: Set tag env to output
         id: release_tags
-        run: printf '%s\n' "release_tag=${{ env.release_tag }}" >> "$GITHUB_OUTPUT"
+        run: printf '%s\n' "release_tag=${release_tag}" >> "$GITHUB_OUTPUT"
 
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v2
