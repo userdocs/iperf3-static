@@ -89,7 +89,7 @@ jobs:
           -e CFLAGS="${{ env.CXXFLAGS }}"
           -e CXXFLAGS="${{ env.CXXFLAGS }}"
           -e LDFLAGS="${{ env.LDFLAGS }}"
-          ghcr.io/userdocs/qbt-musl-cross-make:${{ matrix.qbt-musl-cross-make }}
+          ghcr.io/userdocs/musl-cross-make:${{ matrix.qbt-musl-cross-make }}
 
       - name: Run apk update
         run: docker exec ${container_name} apk update
