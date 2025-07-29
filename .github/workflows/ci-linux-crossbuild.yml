@@ -63,10 +63,10 @@ jobs:
 
     env:
       CDN: http://dl-cdn.alpinelinux.org/alpine/edge/main/
-      CPPFLAGS: "-I/home/gh/local/include"
+      CPPFLAGS: "-I/home/gh/local/include -I/usr/include/fortify -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3"
       CFLAGS: ""
       CXXFLAGS: ""
-      LDFLAGS: "-static --static -L/home/gh/local/lib"
+      LDFLAGS: "-static --static -L/home/gh/local/lib -Wl,-O1,--as-needed,--sort-common,-z,nodlopen,-z,noexecstack,-z,now,-z,relro,-z,--no-copy-dt-needed-entries,--build-id"
       source_repo: ${{ inputs.source_repo }}
       source_branch: ${{ inputs.source_branch }}
       container_name: mcm

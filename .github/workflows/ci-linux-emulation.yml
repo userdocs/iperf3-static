@@ -53,9 +53,10 @@ jobs:
 
     env:
       CDN: http://dl-cdn.alpinelinux.org/alpine/edge/main/
-      CXXFLAGS: "--static -static"
-      CPPFLAGS: "--static -static"
-      LDFLAGS: "--static -static"
+      CPPFLAGS: "-I/home/gh/local/include -I/usr/include/fortify -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3"
+      CFLAGS: ""
+      CXXFLAGS: ""
+      LDFLAGS: "-static --static -L/home/gh/local/lib -Wl,-O1,--as-needed,--sort-common,-z,nodlopen,-z,noexecstack,-z,now,-z,relro,-z,--no-copy-dt-needed-entries,--build-id"
       source_repo: ${{ inputs.source_repo }}
       source_branch: ${{ inputs.source_branch }}
       container_name: mcm
@@ -72,8 +73,9 @@ jobs:
       - name: Create docker ${{ env.container_name }} ${{ matrix.platform }} container
         run: >
           docker run --name ${container_name} -it -d -w /home/gh -v ${{ github.workspace }}:/home/gh --platform ${{ matrix.platform }}
-          -e CXXFLAGS="${{ env.CXXFLAGS }}"
           -e CPPFLAGS="${{ env.CPPFLAGS }}"
+          -e CFLAGS="${{ env.CXXFLAGS }}"
+          -e CXXFLAGS="${{ env.CXXFLAGS }}"
           -e LDFLAGS="${{ env.LDFLAGS }}"
           ${{ matrix.arch }}/${{ matrix.os_id }}:${{ matrix.os_version_id }}
 
