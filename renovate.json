@@ -17,6 +17,16 @@
       ]
     },
     {
+      "rangeStrategy": "pin",
+      "semanticCommitType": "chore"
+    },
+    {
+      "matchPackageNames": [
+        "**"
+      ],
+      "rangeStrategy": "replace"
+    },
+    {
       "matchManagers": [
         "npm"
       ],
