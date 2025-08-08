@@ -65,7 +65,7 @@ jobs:
 
       - name: VirusTotal Scan
         id: virustotal
-        uses: crazy-max/ghaction-virustotal@v4
+        uses: crazy-max/ghaction-virustotal@d34968c958ae283fe976efed637081b9f9dcf74f # v4
         with:
           vt_api_key: ${{ secrets.VT_API_KEY }}
           files: |
@@ -97,7 +97,7 @@ jobs:
 
       - name: "Release - Create artifacts"
         if: inputs.artifacts_only == 'false'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: "${{ matrix.name }}-amd64-win${{ matrix.filename }}"
           path: |
@@ -106,7 +106,7 @@ jobs:
 
       - name: "Dev - Create artifacts"
         if: inputs.artifacts_only == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: "${{ matrix.name }}-amd64-win${{ matrix.filename }}"
           path: "${{ matrix.name }}"
