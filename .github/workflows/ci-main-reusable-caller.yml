@@ -208,14 +208,14 @@ jobs:
       contents: read
     strategy:
       matrix:
-        target: [macos-13, macos-latest]
+        target: [macos-latest-large, macos-latest]
         include:
-          - target: macos-13
-            binary_filename: amd64-osx-13
+          - target: macos-latest-large
+            binary_filename: amd64-osx
             brew_cellar: "/usr/local/Cellar"
             brew_install: "brew install automake"
           - target: macos-latest
-            binary_filename: arm64-osx-14
+            binary_filename: arm64-osx
             brew_cellar: "/opt/homebrew/Cellar"
             brew_install: "brew install autoconf automake libtool"
     uses: ./.github/workflows/ci-osx.yml

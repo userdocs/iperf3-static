@@ -32,7 +32,8 @@ if [[ ${with_openssl} == 'yes' ]]; then
 	curl -sLO "https://github.com/openssl/openssl/releases/download/${openssl_version}/${openssl_version}.tar.gz"
 
 	printf '\n%b\n' " \e[94m\U25cf\e[0m Extracting zlib"
-	rm -rf "zlib" && tar xf "zlib.tar.xz"
+	rm -rf "zlib" && mkdir -p "zlib"
+	tar xf "zlib.tar.xz" --strip-components=1 -C "zlib"
 
 	printf '\n%b\n' " \e[94m\U25cf\e[0m Extracting openssl"
 	rm -rf "openssl" && mkdir -p "openssl"
