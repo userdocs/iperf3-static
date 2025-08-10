@@ -208,13 +208,13 @@ jobs:
       contents: read
     strategy:
       matrix:
-        target: [macos-latest-large, macos-latest]
+        target: [macos-15-large, macos-15]
         include:
-          - target: macos-latest-large
+          - target: macos-15-large
             binary_filename: amd64-osx
             brew_cellar: "/usr/local/Cellar"
             brew_install: "brew install automake"
-          - target: macos-latest
+          - target: macos-15
             binary_filename: arm64-osx
             brew_cellar: "/opt/homebrew/Cellar"
             brew_install: "brew install autoconf automake libtool"

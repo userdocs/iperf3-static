@@ -64,12 +64,10 @@ jobs:
     env:
       CDN: http://dl-cdn.alpinelinux.org/alpine/edge/main/
       CPPFLAGS: "-I/home/gh/local/include -I/usr/include/fortify -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3"
-      CFLAGS: ""
-      CXXFLAGS: ""
       LDFLAGS: "-static --static -L/home/gh/local/lib -Wl,-O1,--as-needed,--sort-common,-z,nodlopen,-z,noexecstack,-z,now,-z,relro,-z,--no-copy-dt-needed-entries,--build-id"
       source_repo: ${{ inputs.source_repo }}
       source_branch: ${{ inputs.source_branch }}
-      container_name: mcm
+      container_name: builder
       ws: ${{ github.workspace }}
       arch: ${{ matrix.arch }}
 
@@ -80,16 +78,19 @@ jobs:
           persist-credentials: false
 
       - name: Host - Bootstrap qemu
-        uses: userdocs/actions/qemu@main
+        uses: userdocs/actions/qemu@e74d179578ddcf1cd07cd9eefd0915f33a3bd600 # v1.0.0
 
-      - name: Create docker ${{ env.container_name }} ${{ matrix.arch }} container
-        run: >
-          docker run --name ${container_name} -it -d -w /home/gh -v ${{ github.workspace }}:/home/gh
-          -e CPPFLAGS="${{ env.CPPFLAGS }}"
-          -e CFLAGS="${{ env.CXXFLAGS }}"
-          -e CXXFLAGS="${{ env.CXXFLAGS }}"
-          -e LDFLAGS="${{ env.LDFLAGS }}"
-          ghcr.io/userdocs/musl-cross-make:${{ matrix.qbt-musl-cross-make }}
+      - uses: userdocs/actions/qbt_docker@e74d179578ddcf1cd07cd9eefd0915f33a3bd600 # v1.0.1
+        with:
+            # if the env.custom file exists, it will be used to pass environment
+            distinct_id: ""
+            use_host_env: "false"
+            container_name: ${{ env.container_name }}
+            os_id: ghcr.io/userdocs/musl-cross-make
+            os_version_id: ${{ matrix.qbt-musl-cross-make }}
+            custom_docker_commands: "-e CPPFLAGS='${{ env.CPPFLAGS }}' -e LDFLAGS='${{ env.LDFLAGS }}'"
+            additional_alpine_apps: "bash curl git"
+            additional_debian_apps: "bash curl git"
 
       - name: Run apk update
         run: docker exec ${container_name} apk update
