@@ -7,7 +7,7 @@ permissions: {}
 
 jobs:
   test-osx-amd64:
-    runs-on: macos-14
+    runs-on: macos-15-large
     permissions:
       contents: read
 
@@ -34,7 +34,7 @@ jobs:
           ~/$(wget -qO- https://db.iperf3serverlist.net/api/v1/db/public/shared-view/b111407c-43c4-48af-a828-301b698064a3/rows/export/csv | awk -F, 'NR>1 { print $1 }' | shuf -n1)
 
   test-osx-arm64:
-    runs-on: macos-latest
+    runs-on: macos-15
     permissions:
       contents: read
 

@@ -18,7 +18,7 @@ on:
       brew_install:
         type: string
         required: true
-      target:
+      runs_on:
         type: string
         required: true
       binary_filename:
@@ -35,11 +35,11 @@ env:
   source_branch: ${{ inputs.source_branch }}
   brew_cellar: ${{ inputs.brew_cellar }}
   brew_install: ${{ inputs.brew_install }}
-  target: ${{ inputs.target }}
+  runs_on: ${{ inputs.runs_on }}
 
 jobs:
   build:
-    runs-on: ${{ inputs.target }}
+    runs-on: ${{ inputs.runs_on }}
     outputs:
       release_tags: ${{ steps.release_tags.outputs.release_tag }}
     steps:

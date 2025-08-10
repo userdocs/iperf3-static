@@ -16,8 +16,8 @@ printf '%s\n\n' "repo: $github_repo branch:$github_branch"
 
 sudo apk update
 
-CPPFLAGS="-I/home/gh/local/include"
-LDFLAGS="-static --static -L/home/gh/local/lib"
+export CPPFLAGS: "-I/home/gh/local/include -I/usr/include/fortify -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3"
+export LDFLAGS: "-static --static -L/home/gh/local/lib -Wl,-O1,--as-needed,--sort-common,-z,nodlopen,-z,noexecstack,-z,now,-z,relro,-z,--no-copy-dt-needed-entries,--build-id"
 
 cd || exit
 mkdir -p /home/gh/local

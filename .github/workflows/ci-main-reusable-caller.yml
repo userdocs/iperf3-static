@@ -207,15 +207,20 @@ jobs:
       attestations: write
       contents: read
     strategy:
+      fail-fast: false
       matrix:
-        target: [macos-15-large, macos-15]
+        runs_on: ["macos-13", "macos-14", "macos-15"]
         include:
-          - target: macos-15-large
-            binary_filename: amd64-osx
+          - runs_on: "macos-13"
+            binary_filename: amd64-osx-13
             brew_cellar: "/usr/local/Cellar"
             brew_install: "brew install automake"
-          - target: macos-15
-            binary_filename: arm64-osx
+          - runs_on: "macos-14"
+            binary_filename: arm64-osx-14
+            brew_cellar: "/opt/homebrew/Cellar"
+            brew_install: "brew install autoconf automake libtool"
+          - runs_on: "macos-15"
+            binary_filename: arm64-osx-15
             brew_cellar: "/opt/homebrew/Cellar"
             brew_install: "brew install autoconf automake libtool"
     uses: ./.github/workflows/ci-osx.yml
@@ -224,7 +229,7 @@ jobs:
     with:
       brew_cellar: ${{ matrix.brew_cellar }}
       brew_install: ${{ matrix.brew_install }}
-      target: ${{ matrix.target }}
+      runs_on: ${{ matrix.runs_on }}
       source_repo: ${{ needs.scheduled_defaults.outputs.source_repo }}
       source_branch: ${{ needs.iperf3_tag.outputs.iperf3_tag || needs.scheduled_defaults.outputs.source_branch }}
       binary_filename: ${{ matrix.binary_filename }}

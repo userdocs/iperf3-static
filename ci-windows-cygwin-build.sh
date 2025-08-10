@@ -63,11 +63,11 @@ fi
 printf '\n%b\n\n' " \e[94m\U25cf\e[0m Cloning iperf3 git repo"
 
 [[ -d "$HOME/iperf3_build" ]] && rm -rf "$HOME/iperf3_build"
-printf '\n%b\n\n' " \e[94m\U25cf\e[0m git clone --no-tags --single-branch --branch ${source_branch} --shallow-submodules --recurse-submodules -j$(nproc) --depth 1 ${source_repo} $HOME/iperf3_build"
+printf '%b\n\n' " \e[94m\U25cf\e[0m git clone --no-tags --single-branch --branch ${source_branch} --shallow-submodules --recurse-submodules -j$(nproc) --depth 1 ${source_repo} $HOME/iperf3_build"
 git clone --no-tags --single-branch --branch "${source_branch}" --shallow-submodules --recurse-submodules -j"$(nproc)" --depth 1 "${source_repo}" "$HOME/iperf3_build"
 cd "$HOME/iperf3_build" || exit 1
 
-printf '\n%b\n\n' " \e[94m\U25cf\e[0m Repo Info"
+printf '%b\n\n' " \e[94m\U25cf\e[0m Repo Info"
 
 git remote show origin
 
