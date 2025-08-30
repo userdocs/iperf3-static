@@ -53,8 +53,6 @@ jobs:
 
     env:
       CDN: http://dl-cdn.alpinelinux.org/alpine/edge/main/
-      CPPFLAGS: "-I/home/gh/local/include -I/usr/include/fortify -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3"
-      LDFLAGS: "-static --static -L/home/gh/local/lib -Wl,-O1,--as-needed,--sort-common,-z,nodlopen,-z,noexecstack,-z,now,-z,relro,-z,--no-copy-dt-needed-entries,--build-id"
       source_repo: ${{ inputs.source_repo }}
       source_branch: ${{ inputs.source_branch }}
       container_name: builder
@@ -66,43 +64,35 @@ jobs:
           persist-credentials: false
 
       - name: Host - Bootstrap qemu
-        uses: userdocs/actions/qemu@e74d179578ddcf1cd07cd9eefd0915f33a3bd600 # v1.0.1
-
-      - uses: userdocs/actions/qbt_docker@e74d179578ddcf1cd07cd9eefd0915f33a3bd600 # v1.0.1
+        uses: userdocs/actions/qemu@e8f57bd585c7bb6dcce011694d6772bab657abca # v1.0.7
         with:
-            # if the env.custom file exists, it will be used to pass environment
-            distinct_id: ""
-            use_host_env: "false"
-            container_name: ${{ env.container_name }}
+          target_arch: ${{ matrix.arch }}
+
+      - name: Host - Bootstrap docker container
+        uses: userdocs/actions/qbt_docker@e8f57bd585c7bb6dcce011694d6772bab657abca # v1.0.7
+        with:
             os_id: ${{ matrix.arch }}/${{ matrix.os_id }}
             os_version_id: ${{ matrix.os_version_id }}
-            custom_docker_commands: "-e CPPFLAGS='${{ env.CPPFLAGS }}' -e LDFLAGS='${{ env.LDFLAGS }}' --platform ${{ matrix.platform }}"
-            additional_alpine_apps: "bash curl git"
-            additional_debian_apps: "bash curl git"
-
-      - name: Run apk update
-        run: docker exec ${container_name} apk update
-
-      - name: Run apk upgrade
-        run: docker exec ${container_name} apk upgrade
-
-      - name: Run apk to install the core build dependencies
-        run: docker exec ${container_name} apk add build-base pkgconf autoconf automake curl libtool git tar curl perl openssl-dev openssl-libs-static linux-headers
+            additional_apps: >
+              build-base pkgconf autoconf automake curl libtool git tar curl perl openssl-dev openssl-libs-static linux-headers
+            custom_docker_commands: |
+              -e CPPFLAGS=-I${wd}/local/include -I/usr/include/fortify -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3
+              -e LDFLAGS=-static --static -L${wd}/local/lib -Wl,-O1,--as-needed,--sort-common,-z,nodlopen,-z,noexecstack,-z,now,-z,relro,-z,--no-copy-dt-needed-entries,--build-id
 
       - name: Git clone ${{ matrix.name }}
-        run: docker exec -u gh:gh ${container_name} git clone --no-tags --single-branch --branch "${source_branch}" --shallow-submodules --recurse-submodules -j"$(nproc)" --depth 1 "${source_repo}" /home/gh/${{ matrix.name }}
+        run: docker exec "${container_name}" git clone --no-tags --single-branch --branch "${source_branch}" --shallow-submodules --recurse-submodules -j"$(nproc)" --depth 1 "${source_repo}" "${wd}/${{ matrix.name }}"
 
       - name: Configure ${{ matrix.name }}
-        run: docker exec -u gh:gh -w /home/gh/${{ matrix.name }} ${container_name} ./configure --disable-shared --with-openssl=/usr --enable-static-bin --prefix=/home/gh
+        run: docker exec -w "${wd}/${{ matrix.name }}" "${container_name}" ./configure --disable-shared --with-openssl=/usr --enable-static-bin --prefix=${wd}
 
       - name: Make Build ${{ matrix.name }}
-        run: docker exec -u gh:gh -w /home/gh/${{ matrix.name }} ${container_name} make -j$(nproc)
+        run: docker exec -w "${wd}/${{ matrix.name }}" "${container_name}" make -j$(nproc)
 
       - name: Make Install Build ${{ matrix.name }}
-        run: docker exec -u gh:gh -w /home/gh/${{ matrix.name }} ${container_name} make install
+        run: docker exec -w "${wd}/${{ matrix.name }}" "${container_name}" make install
 
       - name: Rename ${{ matrix.name }} to ${{ matrix.name }}-${{ matrix.arch }}
-        run: docker exec -u gh:gh ${container_name} mv -f /home/gh/bin/${{ matrix.name }} /home/gh/${{ matrix.name }}-${{ matrix.arch }}
+        run: docker exec "${container_name}" mv -f "${wd}/bin/${{ matrix.name }}" "${wd}/${{ matrix.name }}-${{ matrix.arch }}"
 
       - name: Create path to binary env
         run: printf '%s\n' "binary_path=${{ github.workspace }}/${{ matrix.name }}-${{ matrix.arch }}" >> $GITHUB_ENV
@@ -116,11 +106,11 @@ jobs:
 
       - name: sha256sum
         run: |
-          printf '%s' https://www.virustotal.com/gui/file/$(sha256sum ${binary_path} | awk '{print $1}') > ${{ matrix.name }}-${{ matrix.arch }}.url
+          printf '%s' https://www.virustotal.com/gui/file/$(sha256sum ${binary_path} | awk '{print $1}') > "${{ matrix.name }}-${{ matrix.arch }}.url"
           cat ${{ matrix.name }}-${{ matrix.arch }}.url
 
       - name: Create tag env
-        run: printf '%s\n' "release_tag=$(sed -rn 's|(.*)\[(.*)],\[https://github.com/esnet/iperf],(.*)|\2|p' ${{ matrix.name }}/configure.ac)" >> $GITHUB_ENV
+        run: printf '%s\n' "release_tag=$(sed -rn 's|(.*)\[(.*)],\[https://github.com/esnet/iperf],(.*)|\2|p' "${{ matrix.name }}/configure.ac)" >> $GITHUB_ENV"
 
       - name: Set tag env to output
         id: release_tags

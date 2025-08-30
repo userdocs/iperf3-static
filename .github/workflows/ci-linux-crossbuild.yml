@@ -63,11 +63,8 @@ jobs:
 
     env:
       CDN: http://dl-cdn.alpinelinux.org/alpine/edge/main/
-      CPPFLAGS: "-I/home/gh/local/include -I/usr/include/fortify -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3"
-      LDFLAGS: "-static --static -L/home/gh/local/lib -Wl,-O1,--as-needed,--sort-common,-z,nodlopen,-z,noexecstack,-z,now,-z,relro,-z,--no-copy-dt-needed-entries,--build-id"
       source_repo: ${{ inputs.source_repo }}
       source_branch: ${{ inputs.source_branch }}
-      container_name: builder
       ws: ${{ github.workspace }}
       arch: ${{ matrix.arch }}
 
@@ -78,56 +75,49 @@ jobs:
           persist-credentials: false
 
       - name: Host - Bootstrap qemu
-        uses: userdocs/actions/qemu@e74d179578ddcf1cd07cd9eefd0915f33a3bd600 # v1.0.1
-
-      - uses: userdocs/actions/qbt_docker@e74d179578ddcf1cd07cd9eefd0915f33a3bd600 # v1.0.1
+        uses: userdocs/actions/qemu@e8f57bd585c7bb6dcce011694d6772bab657abca # v1.0.7
         with:
-            # if the env.custom file exists, it will be used to pass environment
-            distinct_id: ""
-            use_host_env: "false"
-            container_name: ${{ env.container_name }}
+          target_arch: ${{ matrix.arch }}
+
+      - name: Host - Bootstrap docker container
+        uses: userdocs/actions/qbt_docker@e8f57bd585c7bb6dcce011694d6772bab657abca # v1.0.7
+        with:
             os_id: ghcr.io/userdocs/musl-cross-make
             os_version_id: ${{ matrix.qbt-musl-cross-make }}
-            custom_docker_commands: "-e CPPFLAGS='${{ env.CPPFLAGS }}' -e LDFLAGS='${{ env.LDFLAGS }}'"
-            additional_alpine_apps: "bash curl git"
-            additional_debian_apps: "bash curl git"
-
-      - name: Run apk update
-        run: docker exec ${container_name} apk update
-
-      - name: Run apk upgrade
-        run: docker exec ${container_name} apk upgrade
+            custom_docker_commands: |
+              -e CPPFLAGS=-I${wd}/local/include -I/usr/include/fortify -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3
+              -e LDFLAGS=-static --static -L${wd}/local/lib -Wl,-O1,--as-needed,--sort-common,-z,nodlopen,-z,noexecstack,-z,now,-z,relro,-z,--no-copy-dt-needed-entries,--build-id
 
       - name: Iperf3 - Install openssl-static dependencies
         run: |
-          docker exec ${container_name} cat /etc/apk/repositories > repositories.txt
+          docker exec "${container_name}" cat /etc/apk/repositories > repositories.txt
           # checking if the containers is latest or edge so that we get the correct openssl libs
           cdn_repo="$(cat repositories.txt | sed -rn 's|https://dl-cdn.alpinelinux.org/alpine/(.*)/(.*)|\1|p' | head -1)"
           # Getting openssl packages info for the current arch and release
-          openssl_libs_static=$(docker exec ${container_name} sh -c "apk info openssl-libs-static | head -1 | awk '{ print \$1 }'")
-          openssl_dev=$(docker exec ${container_name} sh -c "apk info openssl-dev | head -1 | awk '{ print \$1 }'")
+          openssl_libs_static=$(docker exec "${container_name}" sh -c "apk info openssl-libs-static | head -1 | awk '{ print \$1 }'")
+          openssl_dev=$(docker exec "${container_name}" sh -c "apk info openssl-dev | head -1 | awk '{ print \$1 }'")
           # Downloading the openssl packages for the current arch and release
           curl -sLO "https://dl-cdn.alpinelinux.org/alpine/${cdn_repo}/main/${arch}/${openssl_dev}.apk"
           curl -sLO "https://dl-cdn.alpinelinux.org/alpine/${cdn_repo}/main/${arch}/${openssl_libs_static}.apk"
           # Extracting the openssl packages
-          mkdir -p ${ws}/local
-          tar -xzf "${openssl_dev}.apk" --strip-components=1 -C ${ws}/local
-          tar -xzf "${openssl_libs_static}.apk" --strip-components=1 -C ${ws}/local
+          mkdir -p "${ws}/local"
+          tar -xzf "${openssl_dev}.apk" --strip-components=1 -C "${ws}/local"
+          tar -xzf "${openssl_libs_static}.apk" --strip-components=1 -C "${ws}/local"
 
       - name: Git clone ${{ matrix.name }}
-        run: docker exec -u gh:gh ${container_name} git clone --no-tags --single-branch --branch "${source_branch}" --shallow-submodules --recurse-submodules -j"$(nproc)" --depth 1 "${source_repo}" /home/gh/${{ matrix.name }}
+        run: docker exec "${container_name}" git clone --no-tags --single-branch --branch "${source_branch}" --shallow-submodules --recurse-submodules -j"$(nproc)" --depth 1 "${source_repo}" ${wd}/${{ matrix.name }}
 
       - name: Configure ${{ matrix.name }}
-        run: docker exec -u gh:gh -w /home/gh/${{ matrix.name }} ${container_name} ./configure --with-openssl="/home/gh/local" --disable-shared --enable-static-bin --prefix="/home/gh/local"
+        run: docker exec -w "${wd}/${{ matrix.name }}" "${container_name}" ./configure --with-openssl="${wd}/local" --disable-shared --enable-static-bin --prefix="${wd}/local"
 
       - name: Make Build ${{ matrix.name }}
-        run: docker exec -u gh:gh -w /home/gh/${{ matrix.name }} ${container_name} make -j$(nproc)
+        run: docker exec -w "${wd}/${{ matrix.name }}" "${container_name}" make -j$(nproc)
 
       - name: Make Install Build ${{ matrix.name }}
-        run: docker exec -u gh:gh -w /home/gh/${{ matrix.name }} ${container_name} make install
+        run: docker exec -w "${wd}/${{ matrix.name }}" "${container_name}" make install
 
       - name: Rename ${{ matrix.name }} to ${{ matrix.name }}-${{ matrix.release_name }}
-        run: docker exec -u gh:gh ${container_name} mv -f /home/gh/local/bin/${{ matrix.name }} /home/gh/${{ matrix.name }}-${{ matrix.release_name }}
+        run: docker exec "${container_name}" mv -f "${wd}/local/bin/${{ matrix.name }}" "${wd}/${{ matrix.name }}-${{ matrix.release_name }}"
 
       - name: Create path to binary env
         run: printf '%s\n' "binary_path=${{ github.workspace }}/${{ matrix.name }}-${{ matrix.release_name }}" >> $GITHUB_ENV
