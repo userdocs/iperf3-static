@@ -62,7 +62,6 @@ jobs:
     name: ${{ matrix.name }} ${{ matrix.os_id }}:${{ matrix.os_version_id }} ${{ matrix.arch }}
 
     env:
-      CDN: http://dl-cdn.alpinelinux.org/alpine/edge/main/
       source_repo: ${{ inputs.source_repo }}
       source_branch: ${{ inputs.source_branch }}
       ws: ${{ github.workspace }}
