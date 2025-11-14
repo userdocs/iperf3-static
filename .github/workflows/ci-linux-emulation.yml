@@ -110,7 +110,7 @@ jobs:
           cat ${{ matrix.name }}-${{ matrix.arch }}.url
 
       - name: Create tag env
-        run: printf '%s\n' "release_tag=$(sed -rn 's|(.*)\[(.*)],\[https://github.com/esnet/iperf],(.*)|\2|p' "${{ matrix.name }}/configure.ac)" >> $GITHUB_ENV"
+        run: printf '%s\n' "release_tag=$(sed -rn 's|(.*)\[(.*)],\[https://github.com/esnet/iperf],(.*)|\2|p' "${{ matrix.name }}/configure.ac)" >> $GITHUB_ENV
 
       - name: Set tag env to output
         id: release_tags
