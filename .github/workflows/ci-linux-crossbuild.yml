@@ -81,11 +81,11 @@ jobs:
       - name: Host - Bootstrap docker container
         uses: userdocs/actions/qbt_docker@e8f57bd585c7bb6dcce011694d6772bab657abca # v1.0.7
         with:
-            os_id: ghcr.io/userdocs/musl-cross-make
-            os_version_id: ${{ matrix.qbt-musl-cross-make }}
-            custom_docker_commands: |
-              -e CPPFLAGS=-I${wd}/local/include -I/usr/include/fortify -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3
-              -e LDFLAGS=-static --static -L${wd}/local/lib -Wl,-O1,--as-needed,--sort-common,-z,nodlopen,-z,noexecstack,-z,now,-z,relro,-z,--no-copy-dt-needed-entries,--build-id
+          os_id: ghcr.io/userdocs/musl-cross-make
+          os_version_id: ${{ matrix.qbt-musl-cross-make }}
+          custom_docker_commands: |
+            -e CPPFLAGS=-I${wd}/local/include -I/usr/include/fortify -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3
+            -e LDFLAGS=-static --static -L${wd}/local/lib -Wl,-O1,--as-needed,--sort-common,-z,nodlopen,-z,noexecstack,-z,now,-z,relro,-z,--no-copy-dt-needed-entries,--build-id
 
       - name: Iperf3 - Install openssl-static dependencies
         run: |
@@ -134,11 +134,11 @@ jobs:
           cat ${{ matrix.name }}-${{ matrix.release_name }}.url
 
       - name: Create tag env
-        run: printf '%s\n' "release_tag=$(sed -rn 's|(.*)\[(.*)],\[https://github.com/esnet/iperf],(.*)|\2|p' ${{ matrix.name }}/configure.ac)" >> $GITHUB_ENV
+        run: printf '%s\n' "release_tag=$(sed -rn 's|(.*)\[(.*)],\[https://github.com/esnet/iperf],(.*)|\2|p' "${{ matrix.name }}/configure.ac")" >> $GITHUB_ENV
 
       - name: Set tag env to output
         id: release_tags
-        run: printf '%s\n' "release_tag=${release_tag}" >> "$GITHUB_OUTPUT"
+        run: printf '%s\n' "release_tag=${release_tag}" >> $GITHUB_OUTPUT
 
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3.0.0
