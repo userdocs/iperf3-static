@@ -29,7 +29,7 @@ jobs:
       matrix:
         name: [iperf3]
         os_id: [alpine]
-        os_version_id: [latest]
+        os_version_id: [edge]
         arch: [amd64, arm32v6, arm32v7, arm64v8, i386, ppc64le, riscv64, s390x]
         include:
           - arch: amd64
@@ -74,7 +74,7 @@ jobs:
           os_id: ${{ matrix.arch }}/${{ matrix.os_id }}
           os_version_id: ${{ matrix.os_version_id }}
           additional_apps: >
-            build-base pkgconf autoconf automake curl libtool git tar curl perl openssl-dev openssl-libs-static linux-headers
+            build-base pkgconf autoconf automake curl libtool git grep tar curl perl openssl-dev openssl-libs-static linux-headers
           custom_docker_commands: |
             -e CPPFLAGS=-I${wd}/local/include -I/usr/include/fortify -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3
             -e LDFLAGS=-static --static -L${wd}/local/lib -Wl,-O1,--as-needed,--sort-common,-z,nodlopen,-z,noexecstack,-z,now,-z,relro,-z,--no-copy-dt-needed-entries,--build-id

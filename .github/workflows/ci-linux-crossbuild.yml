@@ -83,6 +83,8 @@ jobs:
         with:
           os_id: ghcr.io/userdocs/musl-cross-make
           os_version_id: ${{ matrix.qbt-musl-cross-make }}
+          additional_apps: >
+            build-base pkgconf autoconf automake curl libtool git grep tar curl perl openssl-dev openssl-libs-static linux-headers
           custom_docker_commands: |
             -e CPPFLAGS=-I${wd}/local/include -I/usr/include/fortify -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3
             -e LDFLAGS=-static --static -L${wd}/local/lib -Wl,-O1,--as-needed,--sort-common,-z,nodlopen,-z,noexecstack,-z,now,-z,relro,-z,--no-copy-dt-needed-entries,--build-id

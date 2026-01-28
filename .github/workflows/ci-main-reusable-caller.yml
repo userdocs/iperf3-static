@@ -209,12 +209,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        runs_on: ["macos-13", "macos-14", "macos-15"]
+        runs_on: ["macos-14", "macos-15", "macos-15-intel"]
         include:
-          - runs_on: "macos-13"
-            binary_filename: amd64-osx-13
-            brew_cellar: "/usr/local/Cellar"
-            brew_install: "brew install automake"
           - runs_on: "macos-14"
             binary_filename: arm64-osx-14
             brew_cellar: "/opt/homebrew/Cellar"
@@ -223,6 +219,10 @@ jobs:
             binary_filename: arm64-osx-15
             brew_cellar: "/opt/homebrew/Cellar"
             brew_install: "brew install autoconf automake libtool"
+          - runs_on: "macos-15-intel"
+            binary_filename: amd64-osx-15
+            brew_cellar: "/usr/local/Cellar"
+            brew_install: "brew install automake"
     uses: ./.github/workflows/ci-osx.yml
     secrets:
       VT_API_KEY: ${{ secrets.VT_API_KEY }}
