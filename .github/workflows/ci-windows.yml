@@ -25,6 +25,7 @@ env:
 jobs:
   build:
     runs-on: windows-latest
+    environment: production
     outputs:
       release_tags: ${{ steps.release_tags.outputs.release_tag }}
     strategy:

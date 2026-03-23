@@ -82,6 +82,7 @@ jobs:
     if: needs.skip_duplicate_job.outputs.should_skip != 'true'
     needs: skip_duplicate_job
     runs-on: ubuntu-24.04-arm
+    environment: production
     permissions:
       contents: read
     outputs:
@@ -288,11 +289,11 @@ jobs:
     permissions:
       actions: write
     runs-on: ubuntu-24.04-arm
+    environment: production
     env:
       GH_TOKEN: "${{ secrets.AUTO_RERUN || github.token }}"
       github_repo: "" # To use ci-auto-rerun-failed-jobs.yml hosted in a remote repository else default to the current repository. Requires PAT token AUTO_RERUN
       retries: ${{ github.event.inputs.retries || '1' }}
-      distinct_id: ${{ github.event.inputs.distinct_id }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -305,4 +306,3 @@ jobs:
           -f run_id=${GITHUB_RUN_ID}
           -f attempts=${GITHUB_RUN_ATTEMPT}
           -f retries=${retries}
-          -f distinct_id=${distinct_id}

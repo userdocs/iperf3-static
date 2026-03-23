@@ -40,6 +40,7 @@ env:
 jobs:
   build:
     runs-on: ${{ inputs.runs_on }}
+    environment: production
     outputs:
       release_tags: ${{ steps.release_tags.outputs.release_tag }}
     steps:

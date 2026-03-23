@@ -74,13 +74,21 @@ jobs:
           done
 
       - name: "Publish release ${{ inputs.release_tags }}"
-        uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1.21.0
-        with:
-          prerelease: false
-          artifacts: release-artifacts/iperf3-*[!\.url]
-          replacesArtifacts: true
-          tag: ${{ inputs.release_tags }}
-          name: iperf3 ${{ inputs.release_tags }}
-          allowUpdates: true
-          bodyFile: release-artifacts/ci-release-body.md
-          token: ${{ github.token }}
+        env:
+          release_tags: ${{ inputs.release_tags }}
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/${release_tags}" >/dev/null 2>&1; then
+            gh release edit "${release_tags}" \
+              --title "iperf3 ${release_tags}" \
+              --notes-file release-artifacts/ci-release-body.md \
+              --latest
+            gh release upload "${release_tags}" \
+              --clobber \
+              release-artifacts/iperf3-*[!\.url]
+          else
+            gh release create "${release_tags}" \
+              --title "iperf3 ${release_tags}" \
+              --notes-file release-artifacts/ci-release-body.md \
+              --latest \
+              release-artifacts/iperf3-*[!\.url]
+          fi

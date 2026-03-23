@@ -22,6 +22,7 @@ env:
 jobs:
   build:
     runs-on: ubuntu-24.04-arm
+    environment: production
     outputs:
       release_tags: ${{ steps.release_tags.outputs.release_tag }}
     strategy:
