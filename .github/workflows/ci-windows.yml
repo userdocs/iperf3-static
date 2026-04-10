@@ -98,7 +98,7 @@ jobs:
 
       - name: "Release - Create artifacts"
         if: inputs.artifacts_only == 'false'
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: "${{ matrix.name }}-amd64-win${{ matrix.filename }}"
           path: |
@@ -107,7 +107,7 @@ jobs:
 
       - name: "Dev - Create artifacts"
         if: inputs.artifacts_only == 'true'
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: "${{ matrix.name }}-amd64-win${{ matrix.filename }}"
           path: "${{ matrix.name }}"
