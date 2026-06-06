@@ -19,7 +19,7 @@ on:
       linux_build_type:
         description: "Build Linux iperf3 via crossbuild"
         required: true
-        default: false
+        default: true
         type: boolean
       artifacts_only:
         description: "Skip release - artifacts only"
@@ -71,12 +71,23 @@ jobs:
       should_skip: ${{ steps.skip_check.outputs.should_skip }}
     steps:
       - id: skip_check
-        uses: fkirc/skip-duplicate-actions@f75f66ce1886f00957d99748a42c724f4330bdcf # v5.3.1
-        with:
-          concurrent_skipping: "always"
-          cancel_others: "false"
-          skip_after_successful_duplicate: false
-          do_not_skip: ""
+        env:
+          GH_TOKEN: ${{ github.token }}
+          github_workflow: ${{ github.workflow }}
+          github_ref_name: ${{ github.ref_name }}
+          github_run_id: ${{ github.run_id }}
+        run: |
+          duplicates=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow "${github_workflow}" --branch "${github_ref_name}" --limit 100 --json databaseId,status --jq ".[] | select(.status != \"completed\" and .databaseId < ${github_run_id}) | .databaseId" | tr '\n' ',' | sed 's/,$//')
+
+          if [[ -n "$duplicates" ]]; then
+            printf '%s\n' "should_skip=true" >> "$GITHUB_OUTPUT"
+            printf '\n%b\n' "### :black_square_button: Skip Duplicate Job" >> $GITHUB_STEP_SUMMARY
+            printf '\n%b\n' "Found older running/queued duplicate runs: ${duplicates}. Skipping this run." >> $GITHUB_STEP_SUMMARY
+          else
+            printf '%s\n' "should_skip=false" >> "$GITHUB_OUTPUT"
+            printf '\n%b\n' "### :arrow_forward: Skip Duplicate Job" >> $GITHUB_STEP_SUMMARY
+            printf '\n%b\n' "No older duplicate runs found. Proceeding." >> $GITHUB_STEP_SUMMARY
+          fi
 
   scheduled_defaults:
     if: needs.skip_duplicate_job.outputs.should_skip != 'true'
@@ -90,7 +101,7 @@ jobs:
       source_branch: ${{ github.event.inputs.source_branch || 'master' }}
       artifacts_only: ${{ github.event.inputs.artifacts_only || 'false' }}
       skip_new_tag_check: ${{ github.event.inputs.skip_new_tag_check || 'false'  }}
-      linux_build_type: ${{ github.event.inputs.linux_build_type || 'false' }}
+      linux_build_type: ${{ github.event.inputs.linux_build_type || 'true' }}
       linux: ${{ github.event.inputs.linux || 'false' }}
       windows: ${{ github.event.inputs.windows || 'false' }}
       osx: ${{ github.event.inputs.osx || 'false' }}
@@ -110,7 +121,7 @@ jobs:
 
   show_outputs:
     if: needs.skip_duplicate_job.outputs.should_skip != 'true'
-    needs: scheduled_defaults
+    needs: [scheduled_defaults, skip_duplicate_job]
     runs-on: ubuntu-24.04-arm
     env:
       source_repo: ${{ needs.scheduled_defaults.outputs.source_repo }}
@@ -141,12 +152,12 @@ jobs:
           printf '\n%b\n' "retries: \`${retries}\`" >> $GITHUB_STEP_SUMMARY
 
   iperf3_tag:
-    needs: scheduled_defaults
+    needs: [scheduled_defaults, skip_duplicate_job]
     if: needs.scheduled_defaults.outputs.skip_new_tag_check == 'false' && needs.skip_duplicate_job.outputs.should_skip != 'true'
     uses: ./.github/workflows/ci-check-for-new-release-tag.yml
 
   linux_emulation:
-    needs: [scheduled_defaults, iperf3_tag]
+    needs: [scheduled_defaults, iperf3_tag, skip_duplicate_job]
     if: >
       always() && !failure() && !cancelled() &&
       ( needs.iperf3_tag.outputs.continue_build == 'yes' || needs.scheduled_defaults.outputs.skip_new_tag_check == 'true' ) &&
@@ -163,7 +174,7 @@ jobs:
       source_branch: ${{ needs.iperf3_tag.outputs.iperf3_tag || needs.scheduled_defaults.outputs.source_branch }}
 
   linux_crossbuild:
-    needs: [scheduled_defaults, iperf3_tag]
+    needs: [scheduled_defaults, iperf3_tag, skip_duplicate_job]
     if: >
       always() && !failure() && !cancelled() &&
       ( needs.iperf3_tag.outputs.continue_build == 'yes' || needs.scheduled_defaults.outputs.skip_new_tag_check == 'true' ) &&
@@ -180,7 +191,7 @@ jobs:
       source_branch: ${{ needs.iperf3_tag.outputs.iperf3_tag || needs.scheduled_defaults.outputs.source_branch }}
 
   windows:
-    needs: [scheduled_defaults, iperf3_tag]
+    needs: [scheduled_defaults, iperf3_tag, skip_duplicate_job]
     if: >
       always() && !failure() && !cancelled() &&
       ( needs.iperf3_tag.outputs.continue_build == 'yes' || needs.scheduled_defaults.outputs.skip_new_tag_check == 'true' ) &&
@@ -198,7 +209,7 @@ jobs:
       artifacts_only: ${{ needs.scheduled_defaults.outputs.artifacts_only }}
 
   osx:
-    needs: [scheduled_defaults, iperf3_tag]
+    needs: [scheduled_defaults, iperf3_tag, skip_duplicate_job]
     if: >
       always() && !failure() && !cancelled() &&
       ( needs.iperf3_tag.outputs.continue_build == 'yes' || needs.scheduled_defaults.outputs.skip_new_tag_check == 'true' ) &&
@@ -236,7 +247,7 @@ jobs:
       binary_filename: ${{ matrix.binary_filename }}
 
   release:
-    needs: [scheduled_defaults, linux_emulation, linux_crossbuild, windows, osx]
+    needs: [scheduled_defaults, linux_emulation, linux_crossbuild, windows, osx, skip_duplicate_job]
     if: >
       always() && !failure() && !cancelled() &&
       ( needs.linux_emulation.result == 'success' || needs.linux_crossbuild.result == 'success' || needs.windows.result == 'success' || needs.osx.result == 'success' ) &&
@@ -254,7 +265,7 @@ jobs:
       test_osx: ${{ needs.osx.result }}
 
   docker:
-    needs: [scheduled_defaults, linux_emulation, linux_crossbuild, release]
+    needs: [scheduled_defaults, linux_emulation, linux_crossbuild, release, skip_duplicate_job]
     if: >
       always() && !failure() && !cancelled() &&
       ( needs.linux_emulation.result == 'success' || needs.linux_crossbuild.result == 'success' ) &&
@@ -267,19 +278,7 @@ jobs:
     uses: ./.github/workflows/ci-docker.yml
 
   rerun_on_failure:
-    needs:
-      [
-        skip_duplicate_job,
-        scheduled_defaults,
-        show_outputs,
-        iperf3_tag,
-        linux_emulation,
-        linux_crossbuild,
-        windows,
-        osx,
-        release,
-        docker,
-      ]
+    needs: [skip_duplicate_job, scheduled_defaults, show_outputs, iperf3_tag, linux_emulation, linux_crossbuild, windows, osx, release, docker]
     if: >
       failure() &&
       ( needs.scheduled_defaults.outputs.skip_rerun == 'false' && needs.skip_duplicate_job.outputs.should_skip != 'true' )
