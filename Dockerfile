@@ -1,4 +1,4 @@
-FROM alpine:latest@sha256:a2d49ea686c2adfe3c992e47dc3b5e7fa6e6b5055609400dc2acaeb241c829f4 AS builder
+FROM alpine:latest@sha256:f5064d3e5f88c467c714509f491853ab2d951932c5cad699c0cb969dcec6f3b4 AS builder
 
 ARG ARCH="amd64"
 ARG REPO="userdocs/iperf3-static"
