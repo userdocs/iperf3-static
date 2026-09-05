@@ -90,11 +90,11 @@ jobs:
             ${{ matrix.name }}/bin/cygwin1.dll
 
       - name: Create tag env
-        run: printf '%s\n' "release_tag=$(Get-Content -Path iperf3_version)" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
+        run: Add-Content -Path $env:GITHUB_ENV -Value "release_tag=$(Get-Content -Path iperf3_version)"
 
       - name: Set tag env to output
         id: release_tags
-        run: printf '%s\n' "release_tag=${release_tag}" >> $env:GITHUB_OUTPUT
+        run: Add-Content -Path $env:GITHUB_OUTPUT -Value "release_tag=$env:release_tag"
 
       - name: "Release - Create artifacts"
         if: inputs.artifacts_only == 'false'
