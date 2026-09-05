@@ -12,7 +12,7 @@ The only resource providing multiplatform distro independent iperf3 latest relea
 - [Zizmor workflow auditing](https://github.com/woodruffw/zizmor) - helping ensure the worklow itself is not poisoned.
 - Powerful build system with ability to specify repo and branches to easily build patches or custom builds.
 
-![](.github/assets/images/inputs.png)
+![inputs](.github/assets/images/inputs.png)
 
 ## Build Platforms
 
@@ -27,21 +27,21 @@ Linux:
 - Arch: `amd64` `arm32v6` `arm32v7` `arm64v8` `i386` `ppc64le` `riscv64` `s390x`
 - Docker: yes
 - Static binaries: yes
-- Openssl latest release - https://github.com/openssl/openssl/releases/latest
+- Openssl latest release - <https://github.com/openssl/openssl/releases/latest>
 
 Windows:
 
 - Arch: `amd64`
 - Docker: no
 - Static binaries: yes
-- Openssl 3.0.x LTS (2026-09-07) - LTS Releases after this don't work with cygwin / iperf3 for windows builds.
+- Openssl via cygports - <https://cygwin.com/packages/summary/openssl.html>
 
 MacOS:
 
 - Arch: `amd64` `arm64`
 - Docker: no
 - Static binaries: yes
-- Openssl@3 - https://formulae.brew.sh/formula/openssl@3
+- Openssl@3 - <https://formulae.brew.sh/formula/openssl@3>
 
 > [!NOTE]
 > Windows and MacOS binaries are not fully static in terms of their dependency and `cygwin1.dll` (Windows) `libSystem.B.dylib` (MasOS).
@@ -51,11 +51,11 @@ MacOS:
 
 ## Download - Static Binaries
 
-Static binaries for Linux and Windows are available here: https://github.com/userdocs/iperf3-static/releases/latest
+Static binaries for Linux and Windows are available here: <https://github.com/userdocs/iperf3-static/releases/latest>
 
 Example:
 
-```
+```text
 curl -sLo- iperf3 https://github.com/userdocs/iperf3-static/releases/latest/download/iperf3-amd64
 chmod +x iperf3
 iperf3 --version
@@ -63,7 +63,7 @@ iperf3 --version
 
 ## Download - Docker
 
-Multiarch Docker images are available via https://github.com/users/userdocs/packages/container/package/iperf3-static
+Multiarch Docker images are available via <https://github.com/users/userdocs/packages/container/package/iperf3-static>
 
 Example:
 
@@ -82,16 +82,16 @@ docker run -it ghcr.io/userdocs/iperf3-static:latest iperf3 --version
 <details closed>
 <summary>Expand for details</summary>
 
-| Alpine Arch | Docker platform arch |         Source of Build Dockers         |    ghcr.io image    |
-| :---------: | :------------------: | :-------------------------------------: | :-----------------: |
-|    armhf    |     linux/arm/v6     | https://hub.docker.com/r/arm32v6/alpine | arm32v6/alpine:edge |
-|    armv7    |     linux/arm/v7     | https://hub.docker.com/r/arm32v7/alpine | arm32v7/alpine:edge |
-|   aarch64   |     linux/arm64      | https://hub.docker.com/r/arm64v8/alpine | arm64v8/alpine:edge |
-|   ppc64le   |    linux/ppc64le     | https://hub.docker.com/r/ppc64le/alpine | ppc64le/alpine:edge |
-|    s390x    |     linux/s390x      |  https://hub.docker.com/r/s390x/alpine  |  s390x/alpine:edge  |
-|   riscv64   |    linux/riscv64     | https://hub.docker.com/r/riscv64/alpine | riscv64/alpine:edge |
-|     x86     |      linux/i386      |  https://hub.docker.com/r/i386/alpine   |  i386/alpine:edge   |
-|   x86_64    |     linux/amd64      |  https://hub.docker.com/r/amd64/alpine  |  amd64/alpine:edge  |
+| Alpine Arch | Docker platform arch |          Source of Build Dockers          |    ghcr.io image    |
+| :---------: | :------------------: | :---------------------------------------: | :-----------------: |
+|    armhf    |     linux/arm/v6     | <https://hub.docker.com/r/arm32v6/alpine> | arm32v6/alpine:edge |
+|    armv7    |     linux/arm/v7     | <https://hub.docker.com/r/arm32v7/alpine> | arm32v7/alpine:edge |
+|   aarch64   |     linux/arm64      | <https://hub.docker.com/r/arm64v8/alpine> | arm64v8/alpine:edge |
+|   ppc64le   |    linux/ppc64le     | <https://hub.docker.com/r/ppc64le/alpine> | ppc64le/alpine:edge |
+|    s390x    |     linux/s390x      |  <https://hub.docker.com/r/s390x/alpine>  |  s390x/alpine:edge  |
+|   riscv64   |    linux/riscv64     | <https://hub.docker.com/r/riscv64/alpine> | riscv64/alpine:edge |
+|     x86     |      linux/i386      |  <https://hub.docker.com/r/i386/alpine>   |  i386/alpine:edge   |
+|   x86_64    |     linux/amd64      |  <https://hub.docker.com/r/amd64/alpine>  |  amd64/alpine:edge  |
 
 </details>
 
@@ -102,7 +102,7 @@ docker run -it ghcr.io/userdocs/iperf3-static:latest iperf3 --version
 
 Static Cygwin builds created via cygwin64 using this custom installer
 
-https://github.com/userdocs/iperf3-static/blob/master/cygwin-installer.cmd
+<https://github.com/userdocs/iperf3-static/blob/master/cygwin-installer.cmd>
 
 </details>
 
@@ -111,13 +111,13 @@ https://github.com/userdocs/iperf3-static/blob/master/cygwin-installer.cmd
 <details closed>
 <summary>Expand for details</summary>
 
-```
+```text
 apk add build-base pkgconf autoconf automake curl libtool git perl openssl-libs-static openssl-dev linux-headers
 ```
 
-#### Debian linux
+### Debian linux
 
-```
+```text
 apt install -y build-essential pkg-config automake libtool libssl-dev git perl
 ```
 
@@ -169,14 +169,14 @@ Cygwin openssl requires compiling openssl and zlib
 
 Build - linux + Cygwin
 
-```
+```text
 make -j$(nproc)
 make install
 ```
 
 ### Check the linking was done properly
 
-```
+```text
 ldd ~/bin/iperf3
 ```
 
@@ -184,13 +184,13 @@ ldd ~/bin/iperf3
 
 Use this command to check the version.
 
-```
+```text
 ~/bin/iperf3 -v
 ```
 
 Will show something like this.
 
-```
+```text
 iperf 3.10.1 (cJSON 1.7.13)
 Optional features available: CPU affinity setting, IPv6 flow label, TCP congestion algorithm setting, sendfile / zerocopy, socket pacing, authentication, bind to device, support IPv4 don't fragment
 ```
@@ -259,22 +259,22 @@ chmod 700 ~/bin/iperf3
 
 Windows builds required being bundled with Cygwin dlls to work so these are not single static binaries. They have a directory structure like this.
 
-```
+```text
 iperf3.exe
 cygwin1.dll
 ```
 
 Windows x64 no openssl
 
-https://github.com/userdocs/iperf3-static/releases/latest/download/iperf3-amd64-win.zip
+<https://github.com/userdocs/iperf3-static/releases/latest/download/iperf3-amd64-win.zip>
 
 Windows x64 with openssl
 
-https://github.com/userdocs/iperf3-static/releases/latest/download/iperf3-amd64-win-openssl.zip
+<https://github.com/userdocs/iperf3-static/releases/latest/download/iperf3-amd64-win-openssl.zip>
 
 Check the version:
 
-```
+```text
 ~/bin/iperf3 -v
 ```
 
@@ -312,7 +312,7 @@ Binaries built from the release of `3.17.1+` use [actions/attest-build-provenanc
 
 Verify the integrity and provenance of an artifact using its associated cryptographically signed attestations.
 
-https://cli.github.com/manual/gh_attestation_verify
+<https://cli.github.com/manual/gh_attestation_verify>
 
 For example:
 
@@ -341,9 +341,9 @@ userdocs/iperf3-static  https://slsa.dev/provenance/v1  .github/workflows/alpine
 
 All binaries and dlls are scanned by virus total and the results uploaded using this action
 
-https://github.com/crazy-max/ghaction-virustotal
+<https://github.com/crazy-max/ghaction-virustotal>
 
-The results url is uploaded to the release body and you can see them here https://github.com/userdocs/iperf3-static/releases/latest
+The results url is uploaded to the release body and you can see them here <https://github.com/userdocs/iperf3-static/releases/latest>
 
 </details>
 
@@ -356,7 +356,7 @@ Other contributions have helped inspire the creation of a GitHub action for a Wi
 
 [www.neowin.net](https://www.neowin.net/forum/topic/1234695-iperf-313-windows-build) via [budman](https://www.neowin.net/forum/profile/14624-budman/)
 
-https://github.com/ar51an/iperf3-win-builds via [cryptanalyst](https://www.neowin.net/forum/profile/170754-cryptanalyst/)
+<https://github.com/ar51an/iperf3-win-builds> via [cryptanalyst](https://www.neowin.net/forum/profile/170754-cryptanalyst/)
 
 </details>
 
@@ -365,21 +365,21 @@ https://github.com/ar51an/iperf3-win-builds via [cryptanalyst](https://www.neowi
 <details closed>
 <summary>Expand for details</summary>
 
-Step 1: Fork the repo: https://github.com/userdocs/iperf3-static/fork
+Step 1: Fork the repo: <https://github.com/userdocs/iperf3-static/fork>
 
 Step 2: Under the repo `/settings/secrets/actions` you will need to set a the `VT_API_KEY` using your
 
-You can find it here if you have created an account: https://www.virustotal.com/gui/my-apikey
+You can find it here if you have created an account: <https://www.virustotal.com/gui/my-apikey>
 
 Step 3: Under the Actions tab, enable workflows. The `check_new_release.yml` defaults to a scheduled check but can be run manually.
 
-https://github.com/userdocs/iperf3-static/blob/0571ce60cba18d2b67303b71d31009f83bae36c8/.github/workflows/check_new_release.yml#L11-L12
+<https://github.com/userdocs/iperf3-static/blob/0571ce60cba18d2b67303b71d31009f83bae36c8/.github/workflows/check_new_release.yml#L11-L12>
 
 </details>
 
 ## Test Servers
 
-https://github.com/R0GGER/public-iperf3-servers?tab=readme-ov-file#servers-per-continent
+<https://github.com/R0GGER/public-iperf3-servers?tab=readme-ov-file#servers-per-continent>
 
 Linux one liner for an example output of `./iperf3 -c speedtest.ip-projects.de` for a random Europe server
 

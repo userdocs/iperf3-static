@@ -8,11 +8,11 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-permissions: {}
-
 jobs:
   sh-checker:
     runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -43,6 +43,8 @@ jobs:
 
   editorconfig-checker:
     runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -51,12 +53,18 @@ jobs:
       - name: editorconfig-checker
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          runner_arch: ${{ runner.arch }}
         run: |
-          curl -Lo- "https://github.com/editorconfig-checker/editorconfig-checker/releases/latest/download/ec-linux-amd64.tar.gz" | tar xzf - --strip-components=1
+          case "${runner_arch}" in
+            X86 | X64)
+              arch="amd64"
+              ;;
+            ARM | ARM64)
+              arch="arm64"
+              ;;
+          esac
 
-          printf '%b\n' "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          ./ec-linux-amd64 --exclude '^(docs/.*|patches/.*)$' | sed "s,\x1B\[[0-9;]*[a-zA-Z],,g" >> $GITHUB_STEP_SUMMARY
+          curl -Lo- "https://github.com/editorconfig-checker/editorconfig-checker/releases/latest/download/editorconfig-checker-linux-${arch}.tar.gz" | tar xzf - --strip-components=1
+          ./ec-linux-${arch} --exclude '^(docs/.*|patches/.*)$' | sed 's/\x1b\[[0-9;]*m//g' | { printf '%b\n' '```bash' >> "$GITHUB_STEP_SUMMARY"; tee -a "$GITHUB_STEP_SUMMARY"; printf '%b\n' '```' >> "$GITHUB_STEP_SUMMARY"; }
           exit_code=("${PIPESTATUS[0]}")
-          printf '%b' "\`\`\`" >> $GITHUB_STEP_SUMMARY
-
           # exit "${exit_code}"
