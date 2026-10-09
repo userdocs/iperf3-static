@@ -94,12 +94,12 @@ jobs:
           persist-credentials: false
 
       - name: Host - Bootstrap qemu
-        uses: userdocs/actions/qemu@e8f57bd585c7bb6dcce011694d6772bab657abca # v1.0.7
+        uses: userdocs/actions/qemu@8cf6141527f0fd7b8403fb329907edf8dc2ad75f # v1.0.8
         with:
           target_arch: ${{ matrix.arch }}
 
       - name: Host - Bootstrap docker container
-        uses: userdocs/actions/qbt_docker@e8f57bd585c7bb6dcce011694d6772bab657abca # v1.0.7
+        uses: userdocs/actions/qbt_docker@8cf6141527f0fd7b8403fb329907edf8dc2ad75f # v1.0.8
         with:
           os_id: ghcr.io/userdocs/musl-cross-make
           os_version_id: ${{ matrix.musl-cross-make }}
