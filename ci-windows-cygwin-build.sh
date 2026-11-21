@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
 HOME="$(pwd)"
 with_openssl="${1:-no}"
-if [[ ${2} =~ ^/ ]]; then
+if [[ ${2:-} =~ ^/ ]]; then
 	cygwin_path="${2}"
 else
 	cygwin_path="${HOME}/${2:-cygwin}"
@@ -11,6 +12,70 @@ source_repo="${3:-https://github.com/esnet/iperf.git}"
 source_branch="${4:-master}"
 
 only_apps="${5:-}" # simple way to break up script to make github steps more modular.
+
+# Cygwin's GCC specs unconditionally pass -lintl when linking; --static requires libintl.a.
+# Newer gettext/libintl-devel packages (e.g. 0.26-1) omit libintl.a, so create a stub archive
+# when missing (iperf3 and Cygwin's CRT do not reference any libintl symbols).
+ensure_static_libintl() {
+	if [[ ! -f /usr/lib/libintl.a ]]; then
+		printf '\n%b\n' " \e[93m\U25cf\e[0m /usr/lib/libintl.a missing; creating stub archive for static linking"
+		local tmp_dir
+		tmp_dir="$(mktemp -d)"
+		printf 'typedef int dummy_libintl_t;\n' > "${tmp_dir}/dummy_libintl.c"
+		if ! gcc -c "${tmp_dir}/dummy_libintl.c" -o "${tmp_dir}/dummy_libintl.o" ||
+			! ar rcs /usr/lib/libintl.a "${tmp_dir}/dummy_libintl.o"; then
+			rm -rf "$tmp_dir"
+			return 1
+		fi
+		rm -rf "$tmp_dir"
+	fi
+}
+
+# Fallback to the Cygwin mirror source tarball when cygwin.com git returns HTTP 429 on CI runners.
+fetch_cygwin_openssl_src() {
+	local dest_dir="$1"
+	local mirror="https://www.mirrorservice.org/sites/sourceware.org/pub/cygwin"
+	if [[ -f /etc/setup/setup.rc ]]; then
+		local configured_mirror
+		configured_mirror="$(awk '/^last-mirror/{getline; gsub(/^[ \t\r]+|[ \t\r]+$/, ""); print; exit}' /etc/setup/setup.rc)"
+		if [[ -n "$configured_mirror" ]]; then
+			mirror="${configured_mirror%/}"
+		fi
+	fi
+
+	local tmp_dir
+	tmp_dir="$(mktemp -d)"
+	if ! curl -fsSL "${mirror}/x86_64/setup.xz" -o "${tmp_dir}/setup.xz"; then
+		rm -rf "$tmp_dir"
+		return 1
+	fi
+
+	local src_rel
+	src_rel="$(xz -dc "${tmp_dir}/setup.xz" | awk '
+		$0 == "@ openssl" { in_pkg = 1; next }
+		in_pkg && (/^\[/ || /^@ /) { exit }
+		in_pkg && /^source: / { print $2; exit }
+	')"
+	if [[ -z "$src_rel" ]]; then
+		echo "Failed to find openssl source package in ${mirror}/x86_64/setup.xz" >&2
+		rm -rf "$tmp_dir"
+		return 1
+	fi
+
+	local src_archive="${tmp_dir}/${src_rel##*/}"
+	echo "==> Downloading ${mirror}/${src_rel}..."
+	if ! curl -fsSL "${mirror}/${src_rel}" -o "$src_archive"; then
+		rm -rf "$tmp_dir"
+		return 1
+	fi
+
+	mkdir -p "$dest_dir"
+	if ! tar --strip-components=1 -xf "$src_archive" -C "$dest_dir"; then
+		rm -rf "$tmp_dir"
+		return 1
+	fi
+	rm -rf "$tmp_dir"
+}
 
 printf '\n%b\n' " \e[93m\U25cf\e[0m With openssl = ${with_openssl}"
 printf '%b\n' " \e[93m\U25cf\e[0m Build path = ${HOME}"
@@ -23,19 +88,28 @@ printf '\n%b\n' " \e[93m\U25cf\e[0m source_repo = ${source_repo}"
 printf '\n%b\n' " \e[93m\U25cf\e[0m source_branch = ${source_branch}"
 
 if [[ ${with_openssl} == 'yes' && ${only_apps} == "only_openssl" ]]; then
+	ensure_static_libintl
+
 	# openssl via cygport
 	REPO_DIR="$HOME/openssl"
 
 	echo "==> Cloning Cygwin OpenSSL repository (with submodules)..."
-	if [ ! -d "$REPO_DIR" ]; then
-		git clone --recurse-submodules https://cygwin.com/git/cygwin-packages/openssl.git "$REPO_DIR"
+	if [[ ! -d "$REPO_DIR" ]]; then
+		if ! git clone --recurse-submodules https://cygwin.com/git/cygwin-packages/openssl.git "$REPO_DIR"; then
+			echo "==> Git clone failed; falling back to Cygwin mirror source package..."
+			rm -rf "$REPO_DIR"
+			fetch_cygwin_openssl_src "$REPO_DIR"
+		fi
 		pushd "$REPO_DIR" || exit 1
-	else
+	elif [[ -d "$REPO_DIR/.git" ]]; then
 		echo "Directory $REPO_DIR already exists. Pulling latest changes..."
 		pushd "$REPO_DIR" || exit 1
 		git checkout -- .
 		git pull
 		git submodule update --init --recursive
+	else
+		echo "Directory $REPO_DIR already exists (source archive). Reusing..."
+		pushd "$REPO_DIR" || exit 1
 	fi
 
 	echo "==> Cleaning any previous builds..."
@@ -72,10 +146,13 @@ if [[ ${with_openssl} == 'yes' && ${only_apps} == "only_openssl" ]]; then
 fi
 
 if [[ ${only_apps} == "only_iperf3" ]]; then
+	ensure_static_libintl
 
 	printf '\n%b\n\n' " \e[94m\U25cf\e[0m Cloning iperf3 git repo"
 
-	[[ -d "$HOME/iperf3_build" ]] && rm -rf "$HOME/iperf3_build"
+	if [[ -d "$HOME/iperf3_build" ]]; then
+		rm -rf "$HOME/iperf3_build"
+	fi
 	printf '%b\n\n' " \e[94m\U25cf\e[0m git clone --no-tags --single-branch --branch ${source_branch} --shallow-submodules --recurse-submodules -j$(nproc) --depth 1 ${source_repo} $HOME/iperf3_build"
 	git clone --no-tags --single-branch --branch "${source_branch}" --shallow-submodules --recurse-submodules -j"$(nproc)" --depth 1 "${source_repo}" "$HOME/iperf3_build"
 	cd "$HOME/iperf3_build" || exit 1
@@ -107,12 +184,16 @@ if [[ ${only_apps} == "only_iperf3" ]]; then
 	make -j"$(nproc)"
 
 	printf '\n%b\n\n' " \e[94m\U25cf\e[0m make install"
-	[[ -d "$HOME/iperf3" ]] && rm -rf "$HOME/iperf3"
+	if [[ -d "$HOME/iperf3" ]]; then
+		rm -rf "$HOME/iperf3"
+	fi
 	make install
 
 	if [[ -d "$HOME/iperf3/bin" ]]; then
 		printf '\n%b\n' " \e[94m\U25cf\e[0m Copy dll dependencies"
-		[[ -f "${cygwin_path}/bin/cygwin1.dll" ]] && cp -f "${cygwin_path}/bin/cygwin1.dll" "$HOME/iperf3/bin"
+		if [[ -f "${cygwin_path}/bin/cygwin1.dll" ]]; then
+			cp -f "${cygwin_path}/bin/cygwin1.dll" "$HOME/iperf3/bin"
+		fi
 		printf '\n%b\n' " \e[92m\U25cf\e[0m Copied the dll dependencies"
 	fi
 fi
